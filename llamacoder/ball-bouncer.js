@@ -24,7 +24,7 @@ const BallBouncer = () => {
   const [bounceDamping, setBounceDamping] = useState(0.7);
 
   const [canvasWidth, setCanvasWidth] = useState(window.innerWidth - 30);
-  const [canvasHeight, setCanvasHeight] = useState(window.innerHeight - 30);
+  const [canvasHeight, setCanvasHeight] = useState(window.innerHeight - 40);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
