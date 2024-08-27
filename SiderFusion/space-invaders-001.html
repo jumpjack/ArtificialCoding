@@ -1,4 +1,5 @@
- <!DOCTYPE html>
+
+    <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -16,10 +17,31 @@
                 margin: auto;
                 background: #000;
             }
+            #gameOver {
+                display: none;
+                color: white;
+                text-align: center;
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 24px;
+            }
+            #restartButton {
+                display: none;
+                margin-top: 20px;
+                padding: 10px 20px;
+                font-size: 16px;
+                background-color: #00FF00;
+                border: none;
+                cursor: pointer;
+            }
         </style>
     </head>
     <body>
         <canvas id="gameCanvas" width="480" height="320"></canvas>
+        <div id="gameOver">Game Over! Your score: <span id="finalScore"></span></div>
+        <button id="restartButton" onclick="restartGame()">Restart</button>
         <script>
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
@@ -45,9 +67,9 @@
             let bullets = [];
             let enemyBullets = [];
             let score = 0;
-            let invaderDirection = 1;
-            let invaderSpeed = 1;
-            let invaderDropSpeed = 1 / 60;
+            let invaderDirection = 1; 
+            let invaderSpeed = 1; 
+            let invaderDropSpeed = 1 / 60; 
 
             const obstacles = [
                 { x: 50, y: 250, width: 40, height: 10 },
@@ -55,8 +77,9 @@
                 { x: 350, y: 250, width: 40, height: 10 }
             ];
 
-            let lastMoveTime = 0;
-            let lastEnemyShootTime = 0; // Tempo dell'ultimo colpo nemico
+            let lastMoveTime = 0; 
+            let lastEnemyShootTime = 0; 
+            let gameActive = true; // Variabile per controllare se il gioco Ã¨ attivo
 
             document.addEventListener('keydown', keyDownHandler);
             document.addEventListener('keyup', keyUpHandler);
@@ -79,7 +102,7 @@
             }
 
             function shootBullet(e) {
-                if (e.key === ' ') {
+                if (e.key === ' ' && gameActive) {
                     bullets.push({ x: playerX + playerWidth / 2 - 2, y: canvas.height - playerHeight });
                 }
             }
@@ -115,7 +138,7 @@
                 ctx.fillStyle = '#FF00FF';
                 enemyBullets.forEach((bullet, index) => {
                     ctx.fillRect(bullet.x, bullet.y, 4, 10);
-                    bullet.y += 3; // Velocità del colpo nemico
+                    bullet.y += 3; 
                     if (bullet.y > canvas.height) {
                         enemyBullets.splice(index, 1);
                     }
@@ -146,14 +169,12 @@
                 enemyBullets.forEach((bullet, bulletIndex) => {
                     if (bullet.y + 10 >= canvas.height - playerHeight && bullet.x > playerX && bullet.x < playerX + playerWidth) {
                         // Colpo nemico colpisce il giocatore
-                        alert("Game Over! Your score: " + score);
-                        document.location.reload();
+                        gameOver();
                     }
 
-                    // Controlla collisione con ostacoli
                     obstacles.forEach(obstacle => {
                         if (bullet.x > obstacle.x && bullet.x < obstacle.x + obstacle.width && bullet.y + 10 >= obstacle.y) {
-                            enemyBullets.splice(bulletIndex, 1); // Rimuovi il colpo se colpisce un ostacolo
+                            enemyBullets.splice(bulletIndex, 1); 
                         }
                     });
                 });
@@ -186,7 +207,7 @@
                         const invader = invaders[c][r];
                         if (invader.status === 1) {
                             invader.x += invaderSpeed * invaderDirection;
-                            invader.y += invaderDropSpeed;
+                            invader.y += invaderDropSpeed; 
                         }
                     }
                 }
@@ -201,6 +222,35 @@
                 }
             }
 
+            function gameOver() {
+                gameActive = false; // Blocca il gioco
+                document.getElementById('finalScore').innerText = score;
+                document.getElementById('gameOver').style.display = 'block';
+                document.getElementById('restartButton').style.display = 'block';
+                cancelAnimationFrame(animationId); // Ferma il ciclo di animazione
+            }
+
+            function restartGame() {
+                // Ripristina lo stato del gioco
+                playerX = (canvas.width - playerWidth) / 2;
+                bullets = [];
+                enemyBullets = [];
+                score = 0;
+                gameActive = true; // Riattiva il gioco
+                for (let c = 0; c < invaderColumnCount; c++) {
+                    for (let r = 0; r < invaderRowCount; r++) {
+                        invaders[c][r].status = 1;
+                        invaders[c][r].y = 0; // Riposiziona gli invasori in alto
+                    }
+                }
+                document.getElementById('gameOver').style.display = 'none';
+                document.getElementById('restartButton').style.display = 'none';
+                lastMoveTime = 0;
+                lastEnemyShootTime = 0;
+                draw(0); // Riavvia il ciclo di disegno
+            }
+
+            let animationId;
             function draw(timestamp) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 drawInvaders();
@@ -210,25 +260,25 @@
                 drawObstacles();
                 collisionDetection();
 
-                // Controlla se è passato un secondo dall'ultimo movimento degli invasori
-                if (timestamp - lastMoveTime >= 1000) {
-                    moveInvaders();
-                    lastMoveTime = timestamp; // Aggiorna il tempo dell'ultimo movimento
+                if (gameActive) {
+                    if (timestamp - lastMoveTime >= 1000) {
+                        moveInvaders();
+                        lastMoveTime = timestamp; 
+                    }
+
+                    if (timestamp - lastEnemyShootTime >= 2000) {
+                        enemyShoot();
+                        lastEnemyShootTime = timestamp; 
+                    }
+
+                    if (rightPressed && playerX < canvas.width - playerWidth) {
+                        playerX += 7;
+                    } else if (leftPressed && playerX > 0) {
+                        playerX -= 7;
+                    }
                 }
 
-                // Controlla se è passato un secondo dall'ultimo colpo nemico
-                if (timestamp - lastEnemyShootTime >= 2000) {
-                    enemyShoot();
-                    lastEnemyShootTime = timestamp; // Aggiorna il tempo dell'ultimo colpo nemico
-                }
-
-                if (rightPressed && playerX < canvas.width - playerWidth) {
-                    playerX += 7;
-                } else if (leftPressed && playerX > 0) {
-                    playerX -= 7;
-                }
-
-                requestAnimationFrame(draw);
+                animationId = requestAnimationFrame(draw);
             }
 
             draw(0);
