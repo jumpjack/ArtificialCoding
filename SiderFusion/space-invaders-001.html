@@ -1,0 +1,237 @@
+ <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Space Invaders</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            body {
+                margin: 0;
+                overflow: hidden;
+                background-color: black;
+            }
+            canvas {
+                display: block;
+                margin: auto;
+                background: #000;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="gameCanvas" width="480" height="320"></canvas>
+        <script>
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+
+            let playerWidth = 40;
+            let playerHeight = 20;
+            let playerX = (canvas.width - playerWidth) / 2;
+            let rightPressed = false;
+            let leftPressed = false;
+
+            const invaderRowCount = 5;
+            const invaderColumnCount = 10;
+            const invaderWidth = 40;
+            const invaderHeight = 20;
+            const invaders = [];
+            for (let c = 0; c < invaderColumnCount; c++) {
+                invaders[c] = [];
+                for (let r = 0; r < invaderRowCount; r++) {
+                    invaders[c][r] = { x: c * (invaderWidth + 10), y: 0, status: 1 };
+                }
+            }
+
+            let bullets = [];
+            let enemyBullets = [];
+            let score = 0;
+            let invaderDirection = 1;
+            let invaderSpeed = 1;
+            let invaderDropSpeed = 1 / 60;
+
+            const obstacles = [
+                { x: 50, y: 250, width: 40, height: 10 },
+                { x: 200, y: 250, width: 40, height: 10 },
+                { x: 350, y: 250, width: 40, height: 10 }
+            ];
+
+            let lastMoveTime = 0;
+            let lastEnemyShootTime = 0; // Tempo dell'ultimo colpo nemico
+
+            document.addEventListener('keydown', keyDownHandler);
+            document.addEventListener('keyup', keyUpHandler);
+            document.addEventListener('keydown', shootBullet);
+
+            function keyDownHandler(e) {
+                if (e.key === 'Right' || e.key === 'ArrowRight') {
+                    rightPressed = true;
+                } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
+                    leftPressed = true;
+                }
+            }
+
+            function keyUpHandler(e) {
+                if (e.key === 'Right' || e.key === 'ArrowRight') {
+                    rightPressed = false;
+                } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
+                    leftPressed = false;
+                }
+            }
+
+            function shootBullet(e) {
+                if (e.key === ' ') {
+                    bullets.push({ x: playerX + playerWidth / 2 - 2, y: canvas.height - playerHeight });
+                }
+            }
+
+            function drawPlayer() {
+                ctx.fillStyle = '#00FF00';
+                ctx.fillRect(playerX, canvas.height - playerHeight, playerWidth, playerHeight);
+            }
+
+            function drawInvaders() {
+                for (let c = 0; c < invaderColumnCount; c++) {
+                    for (let r = 0; r < invaderRowCount; r++) {
+                        if (invaders[c][r].status === 1) {
+                            ctx.fillStyle = '#FF0000';
+                            ctx.fillRect(invaders[c][r].x, invaders[c][r].y, invaderWidth, invaderHeight);
+                        }
+                    }
+                }
+            }
+
+            function drawBullets() {
+                ctx.fillStyle = '#FFFF00';
+                bullets.forEach((bullet, index) => {
+                    ctx.fillRect(bullet.x, bullet.y, 4, 10);
+                    bullet.y -= 5;
+                    if (bullet.y < 0) {
+                        bullets.splice(index, 1);
+                    }
+                });
+            }
+
+            function drawEnemyBullets() {
+                ctx.fillStyle = '#FF00FF';
+                enemyBullets.forEach((bullet, index) => {
+                    ctx.fillRect(bullet.x, bullet.y, 4, 10);
+                    bullet.y += 3; // Velocità del colpo nemico
+                    if (bullet.y > canvas.height) {
+                        enemyBullets.splice(index, 1);
+                    }
+                });
+            }
+
+            function drawObstacles() {
+                ctx.fillStyle = '#0000FF';
+                obstacles.forEach(obstacle => {
+                    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                });
+            }
+
+            function collisionDetection() {
+                bullets.forEach((bullet, bulletIndex) => {
+                    for (let c = 0; c < invaderColumnCount; c++) {
+                        for (let r = 0; r < invaderRowCount; r++) {
+                            const invader = invaders[c][r];
+                            if (invader.status === 1 && bullet.x > invader.x && bullet.x < invader.x + invaderWidth && bullet.y > invader.y && bullet.y < invader.y + invaderHeight) {
+                                invader.status = 0;
+                                bullets.splice(bulletIndex, 1);
+                                score++;
+                            }
+                        }
+                    }
+                });
+
+                enemyBullets.forEach((bullet, bulletIndex) => {
+                    if (bullet.y + 10 >= canvas.height - playerHeight && bullet.x > playerX && bullet.x < playerX + playerWidth) {
+                        // Colpo nemico colpisce il giocatore
+                        alert("Game Over! Your score: " + score);
+                        document.location.reload();
+                    }
+
+                    // Controlla collisione con ostacoli
+                    obstacles.forEach(obstacle => {
+                        if (bullet.x > obstacle.x && bullet.x < obstacle.x + obstacle.width && bullet.y + 10 >= obstacle.y) {
+                            enemyBullets.splice(bulletIndex, 1); // Rimuovi il colpo se colpisce un ostacolo
+                        }
+                    });
+                });
+            }
+
+            function moveInvaders() {
+                let edge = false;
+                for (let c = 0; c < invaderColumnCount; c++) {
+                    for (let r = 0; r < invaderRowCount; r++) {
+                        const invader = invaders[c][r];
+                        if (invader.status === 1) {
+                            if (invader.x + invaderWidth >= canvas.width || invader.x <= 0) {
+                                edge = true;
+                            }
+                        }
+                    }
+                }
+
+                if (edge) {
+                    invaderDirection = -invaderDirection;
+                    for (let c = 0; c < invaderColumnCount; c++) {
+                        for (let r = 0; r < invaderRowCount; r++) {
+                            invaders[c][r].y += invaderHeight / 2;
+                        }
+                    }
+                }
+
+                for (let c = 0; c < invaderColumnCount; c++) {
+                    for (let r = 0; r < invaderRowCount; r++) {
+                        const invader = invaders[c][r];
+                        if (invader.status === 1) {
+                            invader.x += invaderSpeed * invaderDirection;
+                            invader.y += invaderDropSpeed;
+                        }
+                    }
+                }
+            }
+
+            function enemyShoot() {
+                const randomColumn = Math.floor(Math.random() * invaderColumnCount);
+                const randomRow = Math.floor(Math.random() * invaderRowCount);
+                const invader = invaders[randomColumn][randomRow];
+                if (invader.status === 1) {
+                    enemyBullets.push({ x: invader.x + invaderWidth / 2 - 2, y: invader.y + invaderHeight });
+                }
+            }
+
+            function draw(timestamp) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawInvaders();
+                drawPlayer();
+                drawBullets();
+                drawEnemyBullets();
+                drawObstacles();
+                collisionDetection();
+
+                // Controlla se è passato un secondo dall'ultimo movimento degli invasori
+                if (timestamp - lastMoveTime >= 1000) {
+                    moveInvaders();
+                    lastMoveTime = timestamp; // Aggiorna il tempo dell'ultimo movimento
+                }
+
+                // Controlla se è passato un secondo dall'ultimo colpo nemico
+                if (timestamp - lastEnemyShootTime >= 2000) {
+                    enemyShoot();
+                    lastEnemyShootTime = timestamp; // Aggiorna il tempo dell'ultimo colpo nemico
+                }
+
+                if (rightPressed && playerX < canvas.width - playerWidth) {
+                    playerX += 7;
+                } else if (leftPressed && playerX > 0) {
+                    playerX -= 7;
+                }
+
+                requestAnimationFrame(draw);
+            }
+
+            draw(0);
+        </script>
+    </body>
+    </html>
