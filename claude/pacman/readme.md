@@ -1,4 +1,7 @@
-Three iterations and 1 small edit were enough to recreate a fully functional "PacMan".
+
+![image](https://github.com/user-attachments/assets/0c70cf50-436b-4fd1-881e-42cb17d201e0)
+
+Three iterations and some minor manual edits were enough to recreate a fully functional "PacMan".
 
 - 1st iteration:
     - Prompt: _Recreate pacman in HTML5_
