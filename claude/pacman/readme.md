@@ -2,7 +2,7 @@ Three iterations and 1 small edit were enough to recreate a fully functional "Pa
 
 - 1st iteration:
     - Prompt: Recreate pacman in HTML5
-    - **Result**
+    - [Result](001.html)
     - Comment: Pacman does not eat balls, there are no "special balls" at corners, erro while moving left; and there are no ghosts
 - 2nd iteration:
     - Prompt: Okay, now let's add the logic:
