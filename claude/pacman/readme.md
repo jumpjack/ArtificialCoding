@@ -18,5 +18,6 @@ Three iterations and 1 small edit were enough to recreate a fully functional "Pa
 - 4th iteration:
     - Prompt: _slow down ghosts_
     - [Result](https://jumpjack.github.io/ArtificialCoding/claude/pacman/004.html): AI starts getting confused, game stops working; I manually add a delay in ghosts movement; result: - [A fully functional PacAIman](https://jumpjack.github.io/ArtificialCoding/claude/pacman/003-mod.html)!
+- [Final manual edit](https://jumpjack.github.io/ArtificialCoding/claude/pacman/003-mod2.html): added balls count to finish game with "You won!" message.
  
-Link to original chat.
+[Link to original chat](https://claude.ai/chat/9f730896-168f-4572-943b-0c93916c34c1).
