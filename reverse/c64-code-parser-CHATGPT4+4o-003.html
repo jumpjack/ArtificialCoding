@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routine Table Generator</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Routine Table Generator</h1>
+    <textarea id="inputData" rows="20" cols="100"></textarea><br><br>
+    <button onclick="generateTable()">Generate Table</button>
+    <table id="routineTable">
+        <thead>
+            <tr>
+                <th>Indirizzo Iniziale</th>
+                <th>Nome Routine</th>
+                <th>Descrizione Routine</th>
+                <th>Routine Chiamanti</th>
+                <th>Punti di Ingresso</th>
+                <th>Punti di Uscita</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+            let routine = {
+                indirizzoIniziale: '',
+                nomeRoutine: '',
+                descrizioneRoutine: '',
+                routineChiamanti: '',
+                puntiIngresso: [],
+                puntiUscita: [],
+				data : ""
+            };
+			let mappa = "";
+
+			function removeDataSections(input) {
+            const lines = input.split('\n');
+            let output = [];
+            let inDataSection = false;
+
+            lines.forEach(line => {
+                if (line.startsWith(';') && line.toLowerCase().includes('data')) {
+                    inDataSection = true;
+                } else if (line.startsWith(';') && line.includes('---')) {
+                    inDataSection = false;
+                }
+
+                if (!inDataSection) {
+                    output.push(line);
+                }
+            });
+
+            return output.join('\n');
+        }
+
+        function generateTable() {
+            const inputData = document.getElementById('inputData').value;
+            const cleanedData =inputData;// removeDataSections(inputData);
+            const lines = cleanedData.split('\n');
+
+            let inHeader = false;
+			let isAsteriskHeader = false;
+			let isEqualHeader = false;
+            const tableBody = document.getElementById('routineTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = ''; // Clear previous table rows
+
+let index = 0;
+while (index < lines.length) {
+    let line = lines[index].trim();
+    if (line.startsWith('*=$')) {
+        // Estrai l'indirizzo iniziale
+        routine.indirizzoIniziale = line.replace('*=$', '').trim();
+
+        // Scorri indietro fino alla prima riga vuota per trovare l'intestazione
+        let headerStart = index - 1;
+        while (headerStart >= 0 && lines[headerStart].trim() !== '') {
+            headerStart--;
+        }
+
+
+        // Memorizza le righe dell'intestazione
+        let headerLines = [];
+        for (let i = headerStart + 1; i < index; i++) {
+            if (lines[i].startsWith(';')) {
+                headerLines.push(lines[i].replace(';', '').trim());
+            }
+        }
+
+
+        // Scorri in avanti per trovare il corpo della routine
+        let bodyStart = index + 1;
+        let bodyLines = [];
+        while (bodyStart < lines.length && lines[bodyStart]/*.trim()*/ !== '') {
+            bodyLines.push(lines[bodyStart]/*.trim()*/);
+            bodyStart++;
+        }
+
+
+        // Gestione dell'intestazione e del corpo in base al tipo di delimitatore
+        if (headerLines.length > 0 && headerLines[0].includes('---')) {
+console.log("Block type: full routine");
+			blockType =  "full";
+
+            // Intestazione racchiusa tra "---"
+            routine.nomeRoutine = headerLines[1];
+
+console.log("   NAME: " + routine.nomeRoutine);
+
+            let descrizione = [];
+            let chiamanti = '';
+
+
+            for (let i = 1; i < headerLines.length; i++) {
+                if (headerLines[i].startsWith("Called by:")) {
+                    chiamanti = headerLines[i];
+                    break;
+                }
+                descrizione.push(headerLines[i]);
+            }
+
+            routine.descrizioneRoutine = descrizione.join(' ');
+            routine.routineChiamanti = chiamanti.replace("Called by:", "").trim();
+
+            processBody(bodyLines, routine.nomeRoutine);
+
+//console.log("  Entry points:" + routine.puntiIngresso);
+
+        } else if (headerLines.length > 0 && headerLines[0].includes('***')) {
+console.log("Block type: simple routine");
+			blockType =  "simple";
+			routine.nomeRoutine = routine.indirizzoIniziale;
+console.log("   NAME: " + routine.nomeRoutine);
+
+
+            // Intestazione racchiusa tra "***"
+            // Tralascia l'intestazione e gestisci solo il corpo
+			processBody(bodyLines, routine.nomeRoutine);
+
+        } else if (headerLines.length > 0 && headerLines[0].includes('===')) {
+			blockType =  "data";
+			routine.nomeRoutine = "(data)";
+            // Intestazione racchiusa tra "==="
+            // Converti i numeri esadecimali nel corpo in caratteri ASCII
+            bodyLines.forEach(line => {
+                let hexMatches = line.match(/\$[0-9A-Fa-f]+/g);
+                if (hexMatches) {
+                    hexMatches.forEach(hex => {
+                        let hexValue = parseInt(hex.replace('$', ''), 16);
+                        routine.data += String.fromCharCode(hexValue);
+                    });
+                }
+            });
+        }
+
+
+
+
+        // Inserisci i dati nella tabella HTML
+        if (routine.nomeRoutine || routine.descrizioneRoutine || routine.puntiIngresso.length > 0 || routine.puntiUscita.length > 0) {
+               const newRow = tableBody.insertRow();
+                newRow.insertCell(0).innerText = routine.indirizzoIniziale;
+                newRow.insertCell(1).innerText = routine.nomeRoutine;
+                newRow.insertCell(2).innerText = routine.descrizioneRoutine;
+                newRow.insertCell(3).innerText = routine.routineChiamanti.replace("Called by: ","");
+				if (blockType !== "data") {
+	                newRow.insertCell(4).innerHTML = '<ul><li>' + routine.puntiIngresso.join('</li><li>') + '</li></ul>';
+	                newRow.insertCell(5).innerHTML = '<ul><li>' + routine.puntiUscita.join('</li><li>') + '</li></ul>';
+				} else {
+	                newRow.insertCell(4).innerHTML = routine.data;
+	                newRow.insertCell(5).innerHTML = "n/a";
+				}
+        }
+
+if (routine.puntiUscita.length === 0) {
+mappa = mappa + "\r\n";
+}
+        // Resetta l'oggetto routine per la prossima iterazione
+        routine = {
+            indirizzoIniziale: '',
+            nomeRoutine: '',
+            descrizioneRoutine: '',
+            routineChiamanti: '',
+            puntiIngresso: [],
+            puntiUscita: [],
+			data : ''
+        };
+
+        // Salta alla riga successiva dopo il corpo
+        index = bodyStart;
+    } else {
+        index++;
+    }
+}
+
+            // Add the last routine if the input doesn't end with an empty line
+            if (routine.nomeRoutine) {
+                const newRow = tableBody.insertRow();
+                newRow.insertCell(0).innerText = routine.indirizzoIniziale;
+                newRow.insertCell(1).innerText = routine.nomeRoutine;
+                newRow.insertCell(2).innerText = routine.descrizioneRoutine;
+                newRow.insertCell(3).innerText = routine.routineChiamanti.replace("Called by: ","");
+				if (blockType !== "data") {
+	                newRow.insertCell(4).innerHTML = '<ul><li>' + routine.puntiIngresso.join('</li><li>') + '</li></ul>';
+	                newRow.insertCell(5).innerHTML = '<ul><li>' + routine.puntiUscita.join('</li><li>') + '</li></ul>';
+				} else {
+	                newRow.insertCell(4).innerHTML = routine.data;
+	                newRow.insertCell(5).innerHTML = "n/a";
+				}
+            }
+
+console.log(mappa);
+        }
+
+		function processBody(bodyLines, name) {
+            // Estrazione dei punti di ingresso e uscita dal corpo
+            bodyLines.forEach(line => {
+                if (line.includes(' JMP ') || line.includes(' JSR ')) {
+                    // Punti di uscita
+					if (line.includes(' JMP ')) {
+console.log("JMP:" + name + ", '"  +  line.trim()  + "'");
+						mappa += "\r\n" + name + "-->" + line.replace(" JMP ","").trim() + "\r\n";
+						lineFixed = line.replace(" JMP ","");
+						routine.puntiUscita.push(lineFixed.trim());
+					} else	if (line.includes(' JSR ')) {
+console.log("JSR: " + name + ", '"  +  line.trim()  + "'");
+						mappa += "\r\n" +  name + "<-->" + line.replace(" JSR ","").trim() + "\r\n";
+						lineFixed = line.replace(" JSR ","");
+						routine.puntiUscita.push(lineFixed.trim());
+					}
+                } else if (line.startsWith(' ')) {
+                    // skip commands
+                } else if (line.includes('RTS')) {
+					mappa += "\r\n";
+                } else  {
+                    // Punti di ingresso
+                    routine.puntiIngresso.push(line.trim());
+				}
+            });
+		}
+    </script>
+</body>
+</html>
+
