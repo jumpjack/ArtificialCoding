@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QIX Mutaforma</title>
+    <style>
+        /* Imposta il margine del corpo a 0, nasconde l'overflow e imposta uno sfondo nero */
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        /* Rende il canvas un blocco visibile */
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <!-- Canvas su cui verrà disegnato il gioco -->
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        // Classe QIX che gestisce la logica e il disegno dell'oggetto in movimento
+class QIX {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.centerX = canvas.width / 2;
+        this.centerY = canvas.height / 2;
+        this.speed = 1;
+        this.angle = Math.random() * Math.PI * 2;
+        this.points = this.generatePoints(2);
+        this.trail = [];
+        this.maxTrailLength = 10;
+        this.moveCounter = 0; // Contatore per gestire l'incremento della posizione
+    }
+
+            // Genera punti che compongono la figura, con una posizione e velocità casuale
+            generatePoints(numPoints) {
+                const points = [];
+                for (let i = 0; i < numPoints; i++) {
+                    const angle = (i / numPoints) * Math.PI * 2; // Angolo equidistante tra i punti
+                    const radius = 20 + Math.random() * 10; // Raggio variabile casualmente
+                    points.push({
+                        x: Math.cos(angle) * radius, // Posizione x del punto
+                        y: Math.sin(angle) * radius, // Posizione y del punto
+                        vx: (Math.random() - 0.5) * 2, // Velocità x casuale
+                        vy: (Math.random() - 0.5) * 2  // Velocità y casuale
+                    });
+                }
+                return points;
+            }
+
+            // Funzione che gestisce il movimento del QIX e la deformazione dei punti
+     move() {
+        // Muovi il centro
+        this.centerX += Math.cos(this.angle) * this.speed;
+        this.centerY += Math.sin(this.angle) * this.speed;
+
+        // Rimbalza sui bordi
+        if (this.centerX < 0 || this.centerX > this.canvas.width) {
+            this.angle = Math.PI - this.angle;
+        }
+        if (this.centerY < 0 || this.centerY > this.canvas.height) {
+            this.angle = -this.angle;
+        }
+
+        // Muovi e deforma i punti
+        this.points.forEach(point => {
+            point.x += point.vx;
+            point.y += point.vy;
+            point.vx += (Math.random() - 0.5) * 5;
+            point.vy += (Math.random() - 0.5) * 5;
+            point.vx *= 0.99;
+            point.vy *= 0.99;
+
+            // Limita la deformazione
+            const dist = Math.sqrt(point.x * point.x + point.y * point.y);
+            if (dist > 40) {
+                const angle = Math.atan2(point.y, point.x);
+                point.x = Math.cos(angle) * 40;
+                point.y = Math.sin(angle) * 40;
+            }
+        });
+
+        // Aggiungi la forma corrente al trail solo ogni 3 incrementi
+        this.moveCounter++;
+        if (this.moveCounter % 3 === 0) { // Controllo per aggiungere la scia ogni 3 incrementi
+            this.trail.push(JSON.parse(JSON.stringify(this.points)));
+            if (this.trail.length > this.maxTrailLength) {
+                this.trail.shift();
+            }
+        }
+    }
+
+            // Funzione che disegna il QIX e la scia sul canvas
+            draw() {
+                // Disegna il trail, riducendo gradualmente l'opacità (alpha) per dare l'effetto dissolvenza
+                this.trail.forEach((shape, index) => {
+                    const alpha = index / this.trail.length; // Calcola l'opacità in base alla posizione nel trail
+                    this.ctx.beginPath();
+                    shape.forEach((point, i) => {
+                        const x = point.x + this.centerX;
+                        const y = point.y + this.centerY;
+                        if (i === 0) this.ctx.moveTo(x, y);  // Inizia un nuovo percorso
+                        else this.ctx.lineTo(x, y);  // Aggiunge un segmento al percorso
+                    });
+                    this.ctx.closePath();
+                    this.ctx.strokeStyle = this.getColor(alpha);  // Colore con opacità variabile
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();  // Disegna il contorno
+                });
+
+                // Disegna la figura principale con opacità massima
+                this.ctx.beginPath();
+                this.points.forEach((point, i) => {
+                    const x = point.x + this.centerX;
+                    const y = point.y + this.centerY;
+                    if (i === 0) this.ctx.moveTo(x, y);  // Inizia un nuovo percorso
+                    else this.ctx.lineTo(x, y);  // Aggiunge un segmento al percorso
+                });
+                this.ctx.closePath();
+                this.ctx.strokeStyle = this.getColor(1);  // Colore pieno (alpha = 1)
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();  // Disegna il contorno
+            }
+
+            // Funzione per calcolare il colore in base al tempo corrente
+            getColor(alpha) {
+                const time = Date.now() * 0.001;  // Tempo in secondi
+                // Calcola i valori RGB con un effetto di variazione temporale
+                const r = Math.sin(time) * 127 + 128;
+                const g = Math.sin(time + 2) * 127 + 128;
+                const b = Math.sin(time + 4) * 127 + 128;
+                return `rgba(${r},${g},${b},${alpha})`;  // Restituisce un colore RGBA
+            }
+        }
+
+        // Inizializza il canvas e il contesto grafico 2D
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let qix;
+
+        // Funzione per adattare le dimensioni del canvas alla finestra del browser
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            qix = new QIX(canvas);  // Crea una nuova istanza di QIX dopo il ridimensionamento
+        }
+
+        // Funzione per animare il QIX
+        function animate() {
+            // Riempie lo sfondo con un rettangolo nero semi-trasparente per creare un effetto dissolvenza
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            qix.move();  // Muove il QIX
+            qix.draw();  // Disegna il QIX e la scia
+            requestAnimationFrame(animate);  // Richiede il prossimo frame di animazione
+        }
+
+        // Aggiunge un event listener per ridimensionare il canvas quando la finestra cambia dimensione
+        window.addEventListener('resize', resizeCanvas);
+        // Imposta le dimensioni iniziali del canvas e avvia l'animazione
+        resizeCanvas();
+        animate();
+    </script>
+</body>
+</html>
