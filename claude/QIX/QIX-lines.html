@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>QIX Lines</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #000;
+        }
+        canvas {
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="qixCanvas"></canvas>
+    <script>
+	// Automatically converted by Claude Sonnet 3.5 from https://github.com/nullman/c64-cc65/blob/master/qix-lines/qixlines.c
+        const canvas = document.getElementById('qixCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Costanti
+        const MAX_COLORS = 16;
+        const MAX_SIN = 180;
+        const HISTORY_SIZE = 10;
+        const STEP = 8;
+        const STEP_RANGE = 6;
+
+        // Dimensioni canvas
+        canvas.width = 800;
+        canvas.height = 600;
+
+        // Colori disponibili (escluso il nero)
+        const colors = [
+            '#FF0000', '#00FF00', '#0000FF', '#FFFF00',
+            '#FF00FF', '#00FFFF', '#FF8000', '#FF0080',
+            '#80FF00', '#00FF80', '#8000FF', '#0080FF',
+            '#FFFF80', '#FF80FF', '#80FFFF'
+        ];
+
+        function randomColor() {
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        // Struttura linea
+        class Line {
+            constructor(x1, y1, x2, y2) {
+                this.x1 = x1;
+                this.y1 = y1;
+                this.x2 = x2;
+                this.y2 = y2;
+            }
+
+            clone() {
+                return new Line(this.x1, this.y1, this.x2, this.y2);
+            }
+        }
+
+        // Stato globale
+        let currentLine = new Line(
+            Math.random() * canvas.width,
+            Math.random() * canvas.height,
+            Math.random() * canvas.width,
+            Math.random() * canvas.height
+        );
+
+        let delta = {
+            x1: STEP, y1: STEP,
+            x2: STEP, y2: STEP
+        };
+
+        let degree = {
+            x1: Math.random() * MAX_SIN,
+            y1: Math.random() * MAX_SIN,
+            x2: Math.random() * MAX_SIN,
+            y2: Math.random() * MAX_SIN
+        };
+
+        // Array per mantenere le linee attive e i loro colori
+        const activeLines = [];
+        let currentColor = randomColor();
+
+        function nextDegree(deg) {
+            let d = deg + STEP + (Math.random() * (STEP_RANGE * 2 + 1) - STEP_RANGE);
+            if (d >= MAX_SIN) d = d - MAX_SIN;
+            return d;
+        }
+
+        function sin(deg) {
+            return Math.sin(deg * Math.PI / 180);
+        }
+
+        function nextLine() {
+            // Aggiorna gradi
+            degree.x1 = nextDegree(degree.x1);
+            degree.y1 = nextDegree(degree.y1);
+            degree.x2 = nextDegree(degree.x2);
+            degree.y2 = nextDegree(degree.y2);
+
+            // Calcola nuove coordinate
+            currentLine.x1 += (delta.x1 * sin(degree.x1));
+            currentLine.y1 += (delta.y1 * sin(degree.y1));
+            currentLine.x2 += (delta.x2 * sin(degree.x2));
+            currentLine.y2 += (delta.y2 * sin(degree.y2));
+
+            // Gestisce collisioni con i bordi
+            if (currentLine.x1 < 0) {
+                currentLine.x1 = -currentLine.x1;
+                delta.x1 = -delta.x1;
+                currentColor = randomColor();
+            }
+            if (currentLine.x1 >= canvas.width) {
+                currentLine.x1 = canvas.width - (currentLine.x1 - canvas.width);
+                delta.x1 = -delta.x1;
+                currentColor = randomColor();
+            }
+            if (currentLine.y1 < 0) {
+                currentLine.y1 = -currentLine.y1;
+                delta.y1 = -delta.y1;
+                currentColor = randomColor();
+            }
+            if (currentLine.y1 >= canvas.height) {
+                currentLine.y1 = canvas.height - (currentLine.y1 - canvas.height);
+                delta.y1 = -delta.y1;
+                currentColor = randomColor();
+            }
+            if (currentLine.x2 < 0) {
+                currentLine.x2 = -currentLine.x2;
+                delta.x2 = -delta.x2;
+                currentColor = randomColor();
+            }
+            if (currentLine.x2 >= canvas.width) {
+                currentLine.x2 = canvas.width - (currentLine.x2 - canvas.width);
+                delta.x2 = -delta.x2;
+                currentColor = randomColor();
+            }
+            if (currentLine.y2 < 0) {
+                currentLine.y2 = -currentLine.y2;
+                delta.y2 = -delta.y2;
+                currentColor = randomColor();
+            }
+            if (currentLine.y2 >= canvas.height) {
+                currentLine.y2 = canvas.height - (currentLine.y2 - canvas.height);
+                delta.y2 = -delta.y2;
+                currentColor = randomColor();
+            }
+        }
+
+        function render() {
+            // Pulisci il canvas
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Disegna tutte le linee attive
+            for (const line of activeLines) {
+                ctx.beginPath();
+                ctx.strokeStyle = line.color;
+                ctx.lineWidth = 1;
+                ctx.moveTo(line.line.x1, line.line.y1);
+                ctx.lineTo(line.line.x2, line.line.y2);
+                ctx.stroke();
+            }
+        }
+
+        function animate() {
+            // Calcola nuova linea
+            nextLine();
+
+            // Aggiungi la nuova linea all'array delle linee attive
+            activeLines.push({
+                line: currentLine.clone(),
+                color: currentColor
+            });
+
+            // Mantieni solo le ultime HISTORY_SIZE linee
+            if (activeLines.length > HISTORY_SIZE) {
+                activeLines.shift();
+            }
+
+            // Renderizza tutto
+            render();
+
+            requestAnimationFrame(animate);
+        }
+
+        // Avvia l'animazione
+        animate();
+    </script>
+</body>
+</html>
