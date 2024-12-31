@@ -1,26 +1,56 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>GPS EXIF Reader</title>
+    <title>Image mapper</title>
     <script src="exif-reader.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <style>
-        body { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; font-family: sans-serif; }
-        #output { margin-top: 1rem; }
-        .image-entry { border-bottom: 1px solid #ccc; padding: 10px 0; }
+        body { 
+            max-width: 1200px; 
+            margin: 2rem auto; 
+            padding: 0 1rem; 
+            font-family: sans-serif;
+        }
+        .map-section { 
+            position: sticky; 
+            top: 0; 
+            z-index: 1; 
+            background: white; 
+            padding: 10px 0;
+            margin-bottom: 20px;
+        }
+        #map { height: 400px; }
+        .image-entry { 
+            border-bottom: 1px solid #ccc; 
+            padding: 10px 0; 
+        }
         .error { color: red; background: #fee; padding: 10px; border-radius: 4px; }
         .warning { color: #856404; background: #fff3cd; padding: 10px; border-radius: 4px; }
-        #map { height: 400px; margin-top: 1rem; }
         .leaflet-popup-content img { max-width: 200px; cursor: pointer; }
         .thumbnail { max-width: 100px; margin-right: 10px; vertical-align: top; cursor: pointer; }
+        .image-name { cursor: pointer; color: #0066cc; }
+        .image-name:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
-    <h1>GPS EXIF Reader</h1>
-    <input type="file" accept="image/*" id="fileInput" multiple>
-    <div id="output"></div>
-    <div id="map"></div>
+    <div class="container">
+        <div class="header">
+            <big><center>Image mapper</big><br>
+            <small><small><i><a href="https://github.com/jumpjack/ArtificialCoding/blob/main/claude/image-mapper/readme.md">Source code</a></i><br></small></small></center>
+            <br>
+            <input type="file" accept="image/*" id="fileInput" multiple>
+        </div><br>
+        
+        
+        <div class="map-section">
+            <div id="map"></div><br>
+            Click on marker to see preview.<br>
+            Click on preview to see full resolution image.<br>
+        </div>
+        
+        <span id="output"></span>
+    </div>
 
     <script>
         let map = L.map('map').setView([0, 0], 2);
@@ -35,6 +65,15 @@
             window.open(url, '_blank');
         }
 
+        function centerMap(lat, lng) {
+            map.setView([lat, lng], 13);
+            markers.forEach(marker => {
+                if (marker.getLatLng().lat === parseFloat(lat) && marker.getLatLng().lng === parseFloat(lng)) {
+                    marker.openPopup();
+                }
+            });
+        }
+
         async function processFile(file) {
             try {
                 const arrayBuffer = await file.arrayBuffer();
@@ -47,7 +86,7 @@
                     entry.innerHTML = `
                         <img src="${imageUrl}" class="thumbnail" onclick="openImage('${imageUrl}')">
                         <div style="display: inline-block">
-                            <strong>${file.name}</strong><br>
+                            <strong class="image-name">${file.name}</strong><br>
                             <div class="warning">Questa immagine non contiene dati GPS</div>
                         </div>
                     `;
@@ -72,7 +111,7 @@
                 entry.innerHTML = `
                     <img src="${imageUrl}" class="thumbnail" onclick="openImage('${imageUrl}')">
                     <div style="display: inline-block">
-                        <strong>${file.name}</strong><br>
+                        <strong class="image-name" onclick="centerMap(${gpsData.latitude}, ${gpsData.longitude})">${file.name}</strong><br>
                         Lat: ${gpsData.latitude}, Lng: ${gpsData.longitude}<br>
                         <a href="https://www.google.com/maps?q=${gpsData.latitude},${gpsData.longitude}" target="_blank">Google Maps</a>
                     </div>
@@ -82,7 +121,7 @@
                 const entry = document.createElement('div');
                 entry.className = 'image-entry';
                 entry.innerHTML = `
-                    <strong>${file.name}</strong><br>
+                    <strong class="image-name">${file.name}</strong><br>
                     <div class="error">Errore nel processare l'immagine: ${error.message}</div>
                 `;
                 document.getElementById('output').appendChild(entry);
