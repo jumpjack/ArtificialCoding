@@ -2,7 +2,7 @@
 
 Load all your images and see where you took the shots. All is working locally, no privacy concerns.
 
-Try it here.
+Try it [here](https://jumpjack.github.io/ArtificialCoding/claude/image-mapper/image-mapper.html).
 
 Click on marker to see preview, click on preview to see full image.
 
