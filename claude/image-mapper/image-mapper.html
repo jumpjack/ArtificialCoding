@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GPS EXIF Reader</title>
+    <script src="exif-reader.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <style>
+        body { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; font-family: sans-serif; }
+        #output { margin-top: 1rem; }
+        .image-entry { border-bottom: 1px solid #ccc; padding: 10px 0; }
+        .error { color: red; background: #fee; padding: 10px; border-radius: 4px; }
+        .warning { color: #856404; background: #fff3cd; padding: 10px; border-radius: 4px; }
+        #map { height: 400px; margin-top: 1rem; }
+        .leaflet-popup-content img { max-width: 200px; cursor: pointer; }
+        .thumbnail { max-width: 100px; margin-right: 10px; vertical-align: top; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>GPS EXIF Reader</h1>
+    <input type="file" accept="image/*" id="fileInput" multiple>
+    <div id="output"></div>
+    <div id="map"></div>
+
+    <script>
+        let map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        
+        let markers = [];
+        let bounds = L.latLngBounds();
+
+        function openImage(url) {
+            window.open(url, '_blank');
+        }
+
+        async function processFile(file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const exifData = ExifReader.load(arrayBuffer);
+                const imageUrl = URL.createObjectURL(file);
+                
+                if (!exifData.GPSLatitude || !exifData.GPSLongitude) {
+                    const entry = document.createElement('div');
+                    entry.className = 'image-entry';
+                    entry.innerHTML = `
+                        <img src="${imageUrl}" class="thumbnail" onclick="openImage('${imageUrl}')">
+                        <div style="display: inline-block">
+                            <strong>${file.name}</strong><br>
+                            <div class="warning">Questa immagine non contiene dati GPS</div>
+                        </div>
+                    `;
+                    document.getElementById('output').appendChild(entry);
+                    return;
+                }
+
+                const gpsData = {
+                    latitude: getGPSCoordinate(exifData.GPSLatitude, exifData.GPSLatitudeRef),
+                    longitude: getGPSCoordinate(exifData.GPSLongitude, exifData.GPSLongitudeRef)
+                };
+
+                const marker = L.marker([gpsData.latitude, gpsData.longitude])
+                    .bindPopup(`<img src="${imageUrl}" alt="Image thumbnail" onclick="openImage('${imageUrl}')">`)
+                    .addTo(map);
+                
+                markers.push(marker);
+                bounds.extend([gpsData.latitude, gpsData.longitude]);
+
+                const entry = document.createElement('div');
+                entry.className = 'image-entry';
+                entry.innerHTML = `
+                    <img src="${imageUrl}" class="thumbnail" onclick="openImage('${imageUrl}')">
+                    <div style="display: inline-block">
+                        <strong>${file.name}</strong><br>
+                        Lat: ${gpsData.latitude}, Lng: ${gpsData.longitude}<br>
+                        <a href="https://www.google.com/maps?q=${gpsData.latitude},${gpsData.longitude}" target="_blank">Google Maps</a>
+                    </div>
+                `;
+                document.getElementById('output').appendChild(entry);
+            } catch (error) {
+                const entry = document.createElement('div');
+                entry.className = 'image-entry';
+                entry.innerHTML = `
+                    <strong>${file.name}</strong><br>
+                    <div class="error">Errore nel processare l'immagine: ${error.message}</div>
+                `;
+                document.getElementById('output').appendChild(entry);
+            }
+        }
+
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            document.getElementById('output').innerHTML = '';
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            bounds = L.latLngBounds();
+
+            const files = Array.from(e.target.files);
+            await Promise.all(files.map(processFile));
+            
+            if (markers.length > 0) {
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        });
+
+        function getGPSCoordinate(coord, ref) {
+            if (!coord || !coord.value) return null;
+            const [degrees, minutes, seconds] = coord.value;
+            let decimal = degrees[0]/degrees[1] + ((minutes[0]/minutes[1]) / 60) + ((seconds[0]/seconds[1]) / 3600);
+            
+            if (ref && (ref.value === 'S' || ref.value === 'W')) {
+                decimal = -decimal;
+            }
+            
+            return decimal.toFixed(6);
+        }
+    </script>
+</body>
+</html>
