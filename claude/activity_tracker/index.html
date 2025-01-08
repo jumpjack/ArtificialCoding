@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: space-around;
+            margin: 20px;
+        }
+        .menu {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            width: 40%;
+        }
+        .input-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            cursor: pointer;
+        }
+        .database-name {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="menu">
+        <input type="text" id="databaseName" class="database-name" placeholder="Enter database name" value="activities.json">
+        <button onclick="newActivity()">New</button>
+        <button onclick="loadFromFile()">Load</button>
+        <button onclick="saveToFile()">Save</button>
+        <button onclick="saveAsFile()">Save As</button>
+        <button onclick="exportToCSV()">Export to CSV</button>
+        <button onclick="exportToHTML()">Export to HTML</button>
+        <button onclick="importCSV()">Import CSV</button>
+    </div>
+    <div class="container">
+        <h2>New Activity</h2>
+        <div class="input-controls">
+            <label for="tagSelect">Select existing tag:</label>
+            <select id="tagSelect" onchange="addSelectedTag()">
+                <option value="">--Select a tag--</option>
+            </select>
+
+            <label for="tagInput">Tags (comma separated):</label>
+            <input type="text" id="tagInput">
+
+            <label for="activityInput">Activity:</label>
+            <input type="text" id="activityInput">
+
+            <button onclick="addActivity()">Add Activity</button>
+        </div>
+
+        <h2>Existing Activities</h2>
+        <table id="activityTable">
+            <thead>
+                <tr>
+                    <th onclick="sortTable(0)">Tags</th>
+                    <th onclick="sortTable(1)">Activity</th>
+                    <th onclick="sortTable(2)">Date</th>
+                    <th>Actions</th>
+                </tr>
+                <tr>
+                    <th><input type="text" id="filterTags" oninput="filterTable()" placeholder="Filter tags..."></th>
+                    <th><input type="text" id="filterActivity" oninput="filterTable()" placeholder="Filter activity..."></th>
+                    <th><input type="text" id="filterDate" oninput="filterTable()" placeholder="Filter date..."></th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        let activities = [];
+        let allTags = new Set();
+
+        function addActivity() {
+            const activityInput = document.getElementById('activityInput');
+            const tagInput = document.getElementById('tagInput');
+            const activityText = activityInput.value.trim();
+            const tags = tagInput.value.trim().split(',').map(tag => tag.trim()).filter(tag => tag);
+
+            if (activityText) {
+                const newActivity = {
+                    date: new Date().toLocaleString(),
+                    text: activityText,
+                    tags: tags
+                };
+                activities.push(newActivity);
+                tags.forEach(tag => allTags.add(tag));
+                updateTagSelect();
+                renderTable();
+                activityInput.value = '';
+                tagInput.value = '';
+                localStorage.setItem('activities', JSON.stringify(activities)); // Save to localStorage
+            }
+        }
+
+        function updateTagSelect() {
+            const tagSelect = document.getElementById('tagSelect');
+            tagSelect.innerHTML = '<option value="">--Select a tag--</option>';
+            allTags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag;
+                option.textContent = tag;
+                tagSelect.appendChild(option);
+            });
+        }
+
+        function addSelectedTag() {
+            const tagSelect = document.getElementById('tagSelect');
+            const tagInput = document.getElementById('tagInput');
+            const selectedTag = tagSelect.value;
+            if (selectedTag && !tagInput.value.split(',').map(tag => tag.trim()).includes(selectedTag)) {
+                tagInput.value = tagInput.value ? tagInput.value + ', ' + selectedTag : selectedTag;
+            }
+            tagSelect.value = '';
+        }
+
+        function renderTable() {
+            const tbody = document.querySelector('#activityTable tbody');
+            tbody.innerHTML = '';
+            activities.forEach((activity, index) => {
+                const row = tbody.insertRow();
+                row.insertCell(0).innerText = activity.tags.join(', ');
+                row.insertCell(1).innerText = activity.text;
+                row.insertCell(2).innerText = activity.date;
+                const actionsCell = row.insertCell(3);
+                actionsCell.innerHTML = `<button onclick="editActivity(${index})">Edit</button>
+                                        <button onclick="deleteActivity(${index})">Delete</button>`;
+            });
+        }
+
+        function editActivity(index) {
+            const activity = activities[index];
+            const newText = prompt('Edit activity:', activity.text);
+            if (newText !== null) {
+                activity.text = newText.trim();
+                const newTags = prompt('Edit tags (comma separated):', activity.tags.join(', '));
+                if (newTags !== null) {
+                    activity.tags = newTags.split(',').map(tag => tag.trim()).filter(tag => tag);
+                    newTags.split(',').forEach(tag => allTags.add(tag.trim()));
+                    updateTagSelect();
+                }
+                renderTable();
+                localStorage.setItem('activities', JSON.stringify(activities)); // Save to localStorage
+            }
+        }
+
+        function deleteActivity(index) {
+            if (confirm('Are you sure you want to delete this activity?')) {
+                activities.splice(index, 1);
+                renderTable();
+                localStorage.setItem('activities', JSON.stringify(activities)); // Save to localStorage
+            }
+        }
+
+        function sortTable(columnIndex) {
+            activities.sort((a, b) => {
+                if (columnIndex === 0) {
+                    return a.tags.join(', ').localeCompare(b.tags.join(', '));
+                } else if (columnIndex === 1) {
+                    return a.text.localeCompare(b.text);
+                } else {
+                    return new Date(a.date) - new Date(b.date);
+                }
+            });
+            renderTable();
+        }
+
+        function filterTable() {
+            const filterTags = document.getElementById('filterTags').value.toLowerCase();
+            const filterActivity = document.getElementById('filterActivity').value.toLowerCase();
+            const filterDate = document.getElementById('filterDate').value.toLowerCase();
+
+            const filteredActivities = activities.filter(activity =>
+                activity.tags.join(', ').toLowerCase().includes(filterTags) &&
+                activity.text.toLowerCase().includes(filterActivity) &&
+                activity.date.toLowerCase().includes(filterDate)
+            );
+            renderFilteredTable(filteredActivities);
+        }
+
+        function renderFilteredTable(filteredActivities) {
+            const tbody = document.querySelector('#activityTable tbody');
+            tbody.innerHTML = '';
+            filteredActivities.forEach((activity, index) => {
+                const row = tbody.insertRow();
+                row.insertCell(0).innerText = activity.tags.join(', ');
+                row.insertCell(1).innerText = activity.text;
+                row.insertCell(2).innerText = activity.date;
+                const actionsCell = row.insertCell(3);
+                actionsCell.innerHTML = `<button onclick="editActivity(${index})">Edit</button>
+                                        <button onclick="deleteActivity(${index})">Delete</button>`;
+            });
+        }
+
+        function saveToFile() {
+            const filename = document.getElementById('databaseName').value.trim();
+            if (filename) {
+                if (fileExists(filename)) {
+                    if (confirm(`The file "${filename}" already exists. Do you want to overwrite it?`)) {
+                        saveFileContent(filename);
+                    }
+                } else {
+                    saveFileContent(filename);
+                }
+            }
+        }
+
+        function fileExists(filename) {
+            // Simulate file existence check for demonstration
+            return false;
+        }
+
+        function saveFileContent(filename) {
+            const blob = new Blob([JSON.stringify(activities, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function saveAsFile() {
+            const filename = prompt('Enter filename:', document.getElementById('databaseName').value);
+            if (filename) {
+                document.getElementById('databaseName').value = filename;
+                saveFileContent(filename);
+            }
+        }
+
+        function loadFromFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json';
+            input.onchange = event => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        activities = JSON.parse(e.target.result);
+                        allTags.clear();
+                        activities.forEach(activity => activity.tags.forEach(tag => allTags.add(tag)));
+                        updateTagSelect();
+                        renderTable();
+                        localStorage.setItem('activities', JSON.stringify(activities)); // Save to localStorage
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+
+        function exportToCSV() {
+            let content = 'Tags,Activity,Date\n';
+            const filteredActivities = getFilteredActivities();
+            filteredActivities.forEach(activity => {
+                content += `"${activity.tags.join(', ')}","${activity.text}","${activity.date}"\n`;
+            });
+            const blob = new Blob([content], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'activities.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportToHTML() {
+            let content = '<table border="1">';
+            content += '<tr><th>Tags</th><th>Activity</th><th>Date</th></tr>';
+            const filteredActivities = getFilteredActivities();
+            filteredActivities.forEach(activity => {
+                content += `<tr><td>${activity.tags.join(', ')}</td><td>${activity.text}</td><td>${activity.date}</td></tr>`;
+            });
+            content += '</table>';
+            const blob = new Blob([content], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'activities.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importCSV() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'text/csv';
+            input.onchange = event => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        const lines = e.target.result.split('\n');
+                        activities = lines.slice(1).filter(line => line).map(line => {
+                            const [tags, text, date] = line.split(',').map(item => item.replace(/^"|"$/g, '').trim());
+                            return { tags: tags.split(',').map(tag => tag.trim()), text, date };
+                        });
+                        allTags.clear();
+                        activities.forEach(activity => activity.tags.forEach(tag => allTags.add(tag)));
+                        updateTagSelect();
+                        renderTable();
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+
+        function newActivity() {
+            activities = [];
+            allTags.clear();
+            updateTagSelect();
+            renderTable();
+        }
+
+        function getFilteredActivities() {
+            const filterTags = document.getElementById('filterTags').value.toLowerCase();
+            const filterActivity = document.getElementById('filterActivity').value.toLowerCase();
+            const filterDate = document.getElementById('filterDate').value.toLowerCase();
+
+            return activities.filter(activity =>
+                activity.tags.join(', ').toLowerCase().includes(filterTags) &&
+                activity.text.toLowerCase().includes(filterActivity) &&
+                activity.date.toLowerCase().includes(filterDate)
+            );
+        }
+    </script>
+</body>
+</html>
