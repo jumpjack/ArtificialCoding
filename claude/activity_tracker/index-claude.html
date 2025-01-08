@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Activity Tracker</title>
+    <style>
+        /* Stili precedenti */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        /* Stili per il menu */
+        .menu-bar {
+            background-color: #f8f9fa;
+            padding: 8px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .menu-item {
+            position: relative;
+            display: inline-block;
+        }
+
+        .menu-item > button {
+            background: none;
+            border: none;
+            color: #333;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .menu-item > button:hover {
+            background-color: #e9ecef;
+        }
+
+        .menu-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 160px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border-radius: 4px;
+            z-index: 1000;
+        }
+
+        .menu-content button {
+            width: 100%;
+            text-align: left;
+            padding: 8px 16px;
+            border: none;
+            background: none;
+            color: #333;
+            cursor: pointer;
+        }
+
+        .menu-content button:hover {
+            background-color: #f8f9fa;
+        }
+
+        .menu-item:hover .menu-content {
+            display: block;
+        }
+
+        /* Dialog personalizzato */
+        .dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .dialog {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .dialog h3 {
+            margin-bottom: 15px;
+        }
+
+        .dialog-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* Stili esistenti... */
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .activities-table {
+            flex: 2;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .input-form {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        th:hover {
+            background-color: #e9ecef;
+        }
+
+        td {
+            padding: 12px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #0066cc;
+            color: white;
+            margin-right: 8px;
+        }
+
+        button:hover {
+            background-color: #0052a3;
+        }
+
+        button.delete {
+            background-color: #dc3545;
+        }
+
+        button.delete:hover {
+            background-color: #c82333;
+        }
+
+        button.edit {
+            background-color: #28a745;
+        }
+
+        button.edit:hover {
+            background-color: #218838;
+        }
+
+        .tag {
+            display: inline-block;
+            background-color: #e2e8f0;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 2px;
+            font-size: 0.9em;
+        }
+
+        .buttons-container {
+            margin-top: 10px;
+        }
+
+        .sort-indicator::after {
+            content: '↓';
+            margin-left: 5px;
+        }
+
+        .sort-indicator.asc::after {
+            content: '↑';
+        }
+
+        /* Stile per il titolo del database */
+        .database-name {
+            margin-bottom: 10px;
+            padding: 8px;
+            font-size: 1.2em;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 300px;
+        }
+
+        /* Stile per i filtri */
+        .filter-row input {
+            width: 50%;
+            padding: 4px;
+            margin: 2px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        /* Stile per checkbox */
+        .select-checkbox {
+            width: 18px;
+            height: 18px;
+            margin: 0 8px;
+        }
+
+        /* Header della tabella con filtri */
+        .table-header {
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+        }
+
+        /* Stili per il menu About */
+        .about-content {
+            padding: 20px;
+            text-align: center;
+        }
+
+       /* Stile per riga selezionata */
+        tr.selected-row {
+            background-color: #e8f0fe;
+        }
+
+        /* Stile per riga in modifica */
+        tr.editing {
+            background-color: #fff3e0;
+        }
+
+        /* Stile per riga cliccabile */
+        tr.clickable {
+            cursor: pointer;
+        }
+        tr.clickable:hover {
+            background-color: #f5f5f5;
+        }
+
+    </style>
+</head>
+
+<body>
+    <!-- Nome del database -->
+    <input type="text" id="databaseName" class="database-name" value="senza_titolo"
+           placeholder="Nome database">
+
+
+    <!-- Menu Bar -->
+    <div class="menu-bar">
+        <div class="menu-item">
+            <button>File</button>
+            <div class="menu-content">
+                <button onclick="handleNewFile()">Nuovo</button>
+                <button onclick="handleLoadFile()">Carica</button>
+                <button onclick="handleSaveFile()">Salva</button>
+                <button onclick="handleSaveAsFile()">Salva con nome</button>
+                <button onclick="handleImportFile()">Importa</button>
+                <button onclick="handleExportFile(false)">Esporta tutto</button>
+                <button onclick="handleExportFile(true)">Esporta selezionati</button>
+            </div>
+        </div>
+        <div class="menu-item">
+            <button>Modifica</button>
+            <div class="menu-content">
+                <button onclick="handleDeleteSelected()">Elimina selezionate</button>
+                <button onclick="        let filters = {tags: '',text: '', date: ''};">Azzera filtri</button>
+            </div>
+        </div>
+        <div class="menu-item">
+            <button>Guida</button>
+            <div class="menu-content help-content">
+                <button onclick="alert('Created by jumpjack with AI');">About</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dialog di conferma -->
+    <div id="confirmDialog" class="dialog-overlay">
+        <div class="dialog">
+            <h3>Conferma</h3>
+            <p id="confirmMessage"></p>
+            <div class="dialog-buttons">
+                <button onclick="confirmDialog.cancel()">No</button>
+                <button onclick="confirmDialog.confirm()" style="background-color: #0066cc; color: white;">Si'</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input file nascosti -->
+    <input type="file" id="loadFileInput" style="display: none" accept=".json">
+    <input type="file" id="importFileInput" style="display: none" accept=".html,.csv">
+
+    <div class="container">
+        <div class="activities-table">
+            <h2>Attività</h2>
+            <table id="activitiesTable">
+                <thead>
+                    <tr>
+                        <th data-sort="date">Selezione</th>
+                        <th data-sort="text">Tag</th>
+                        <th>Attività</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody id="activitiesBody"></tbody>
+            </table>
+        </div>
+
+        <div class="input-form">
+            <h2>Nuova Attività</h2>
+            <input type="text" id="activityText" placeholder="Descrivi l'attività">
+            <input type="text" id="activityTags" placeholder="Tag separati da virgola" list="existingTags">
+            <datalist id="existingTags"></datalist>
+            <div class="buttons-container">
+                <button onclick="addActivity()">Aggiungi Attività</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let activities = [];
+        let existingTags = new Set();
+        let currentSort = { key: 'date', direction: 'desc' };
+        let editingId = null;
+
+      // Variabili globali per la gestione dei file
+        let currentFileName = null;
+        let hasUnsavedChanges = false;
+
+        let filters = {
+            tags: '',
+            text: '',
+            date: ''
+        };
+        let selectedActivities = new Set();
+
+
+        // Gestione eventi tastiera
+        document.addEventListener('keydown', async (e) => {
+            if (e.key === 'Delete' || e.key === 'Del') {
+                await handleDeleteSelected();
+            } else if (e.key === 'Escape') {
+                cancelEditing();
+            }
+        });
+
+        // Funzione per gestire l'eliminazione delle attività selezionate
+        async function handleDeleteSelected() {
+            const selectedCount = selectedActivities.size;
+            if (selectedCount === 0) {
+                alert('Nessuna attività selezionata');
+                return;
+            }
+
+            const message = selectedCount === 1
+                ? 'Sei sicuro di voler eliminare l\'attività selezionata?'
+                : `Sei sicuro di voler eliminare le ${selectedCount} attività selezionate?`;
+
+            if (await confirmDialog.show(message)) {
+                activities = activities.filter(activity => !selectedActivities.has(activity.id));
+                selectedActivities.clear();
+                hasUnsavedChanges = true;
+                updateExistingTags();
+                renderActivities();
+            }
+        }
+
+        // Funzione per gestire il click su una riga
+        function handleRowClick(activity) {
+            if (editingId !== activity.id) {
+                cancelEditing(); // Annulla eventuali modifiche in corso
+                startEditing(activity.id);
+            }
+        }
+
+        // Funzione per annullare la modifica
+        function cancelEditing() {
+            editingId = null;
+            renderActivities();
+        }
+
+
+        // Funzione per applicare i filtri
+        function applyFilters(activities) {
+            return activities.filter(activity => {
+                const matchesTags = !filters.tags ||
+                    activity.tags.some(tag =>
+                        tag.toLowerCase().includes(filters.tags.toLowerCase()));
+                const matchesText = !filters.text ||
+                    activity.text.toLowerCase().includes(filters.text.toLowerCase());
+                const matchesDate = !filters.date ||
+                    new Date(activity.date).toLocaleString('it-IT', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    }).includes(filters.date).replace(' alle ore ', ' - ');
+
+                return matchesTags && matchesText && matchesDate;
+            });
+        }
+
+
+        // Classe per gestire i dialog
+        class Dialog {
+            constructor(elementId) {
+                this.element = document.getElementById(elementId);
+                this.resolvePromise = null;
+            }
+
+            show(message) {
+                document.getElementById('confirmMessage').textContent = message;
+                this.element.style.display = 'flex';
+                return new Promise(resolve => {
+                    this.resolvePromise = resolve;
+                });
+            }
+
+            confirm() {
+                this.element.style.display = 'none';
+                this.resolvePromise(true);
+            }
+
+            cancel() {
+                this.element.style.display = 'none';
+                this.resolvePromise(false);
+            }
+        }
+
+        const confirmDialog = new Dialog('confirmDialog');
+
+        // Funzione per controllare cambiamenti non salvati
+        async function checkUnsavedChanges() {
+            if (hasUnsavedChanges) {
+                return await confirmDialog.show('ATTENZIONE! CI SONO DATI NON SALVATI. CANCELLARE TUTTO?');
+            }
+            return true;
+        }
+
+        // Gestione del menu File
+        async function handleNewFile() {
+            if (await checkUnsavedChanges()) {
+                activities = [];
+                existingTags.clear();
+                currentFileName = null;
+                hasUnsavedChanges = false;
+                renderActivities();
+            } else {
+                alert("DEBUG: salvare");
+            }
+        }
+
+        async function handleLoadFile() {
+            if (await checkUnsavedChanges()) {
+                document.getElementById('loadFileInput').click();
+            } else {
+                alert("DEBUG: salvare");
+            }
+        }
+
+        function handleSaveFile() {
+            if (currentFileName) {
+                saveToJson(currentFileName);
+            } else {
+                handleSaveAsFile();
+            }
+        }
+
+        function handleSaveAsFile() {
+            const filename = prompt('Inserisci il nome del file:', 'activities.json');
+            if (filename) {
+                saveToJson(filename);
+                currentFileName = filename;
+            }
+        }
+
+        async function handleImportFile() {
+            if (await checkUnsavedChanges()) {
+                document.getElementById('importFileInput').click();
+            } else {
+                alert("DEBUG: salvare");
+            }
+        }
+
+        function handleExportFile() {
+            const format = prompt('Scegli il formato di esportazione (html/csv):', 'html');
+            if (format === 'html') {
+                saveToHtml();
+            } else if (format === 'csv') {
+                saveToCsv();
+            }
+        }
+
+        // Funzioni di salvataggio
+        function saveToJson(filename) {
+            const data = JSON.stringify(activities, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            hasUnsavedChanges = false;
+        }
+
+        function saveToCsv() {
+            const headers = ['Data', 'Attività', 'Tag'];
+            const rows = activities.map(activity => [
+                new Date(activity.date).toLocaleString('it-IT', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }).replace(' alle ore ', ' - '),
+                activity.text,
+                activity.tags.join('; ')
+            ]);
+
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'activities.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Event listeners per il caricamento dei file
+        document.getElementById('loadFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                   // try {
+                        activities = JSON.parse(e.target.result);
+                        currentFileName = file.name;
+                        hasUnsavedChanges = false;
+                        updateExistingTags();
+                        renderActivities();
+                        document.getElementById('databaseName').value = currentFileName.replace(".html","").replace(".csv","").replace(".json","");
+                    //} catch (error) {
+                    //    alert('Errore nel caricamento del file JSON');
+                    //}
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        document.getElementById('importFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    if (file.name.endsWith('.csv')) {
+                        importCsv(e.target.result);
+                    } else if (file.name.endsWith('.html')) {
+                        importHtml(e.target.result);
+                    }
+                        document.getElementById('databaseName').value = currentFileName.replace(".html","").replace(".csv","").replace(".json","");
+
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Funzioni di importazione
+        function importCsv(content) {
+            const rows = content.split('\n').map(row =>
+                row.split(',').map(cell => cell.replace(/^"|"$/g, '').trim())
+            );
+            const headers = rows[0];
+
+            activities = rows.slice(1).map(row => ({
+                id: Date.now() + Math.random(),
+                date: new Date().toISOString(),
+                text: row[1],
+                tags: row[2].split(';').map(tag => tag.trim()).filter(tag => tag)
+            }));
+
+            updateExistingTags();
+            renderActivities();
+            hasUnsavedChanges = true;
+        }
+
+        function importHtml(content) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(content, 'text/html');
+            const rows = Array.from(doc.querySelectorAll('tr')).slice(1);
+
+            activities = rows.map(row => {
+                const cells = row.querySelectorAll('td');
+                return {
+                    id: Date.now() + Math.random(),
+                    date: new Date().toISOString(),
+                    text: cells[1].textContent,
+                    tags: Array.from(cells[2].querySelectorAll('.tag'))
+                        .map(tag => tag.textContent)
+                };
+            });
+
+            updateExistingTags();
+            renderActivities();
+            hasUnsavedChanges = true;
+        }
+
+
+
+        // Funzione per aggiungere una nuova attività
+        function addActivity() {
+            const textInput = document.getElementById('activityText');
+            const tagsInput = document.getElementById('activityTags');
+
+            if (textInput.value.trim()) {
+                const activity = {
+                    id: Date.now(),
+                    text: textInput.value.trim(),
+                    tags: tagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag),
+                    date: new Date().toISOString()
+                };
+
+                activities.push(activity);
+                updateExistingTags();
+                renderActivities();
+
+                // Reset input fields
+                textInput.value = '';
+                tagsInput.value = '';
+            }
+            hasUnsavedChanges = true;
+        }
+
+        // Aggiorna il set dei tag esistenti
+        function updateExistingTags() {
+            existingTags.clear();
+            activities.forEach(activity => {
+                activity.tags.forEach(tag => existingTags.add(tag));
+            });
+
+            // Aggiorna la datalist
+            const datalist = document.getElementById('existingTags');
+            datalist.innerHTML = '';
+            existingTags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag;
+                datalist.appendChild(option);
+            });
+        }
+
+        // Funzione per eliminare un'attività
+        function deleteActivity(id) {
+            activities = activities.filter(activity => activity.id !== id);
+            updateExistingTags();
+            renderActivities();
+        }
+
+        // Funzione per iniziare la modifica di un'attività
+        function startEditing(id) {
+            editingId = id;
+            renderActivities();
+        }
+
+        // Funzione per salvare le modifiche
+        function saveEdit(id) {
+            const activity = activities.find(a => a.id === id);
+            if (activity) {
+                const newText = document.getElementById(`edit-text-${id}`).value;
+                const newTags = document.getElementById(`edit-tags-${id}`).value
+                    .split(',')
+                    .map(tag => tag.trim())
+                    .filter(tag => tag);
+
+                activity.text = newText;
+                activity.tags = newTags;
+                editingId = null;
+                updateExistingTags();
+                renderActivities();
+            }
+            hasUnsavedChanges = true;
+        }
+
+        // Funzione per ordinare le attività
+        function sortActivities(key) {
+            if (currentSort.key === key) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.key = key;
+                currentSort.direction = 'desc';
+            }
+
+            activities.sort((a, b) => {
+                let comparison = 0;
+                if (key === 'date') {
+                    comparison = new Date(a.date) - new Date(b.date);
+                } else if (key === 'text') {
+                    comparison = a.text.localeCompare(b.text);
+                }
+                return currentSort.direction === 'asc' ? comparison : -comparison;
+            });
+
+            renderActivities();
+        }
+
+        // Funzione per renderizzare la tabella delle attività
+        function renderActivities() {
+            const tbody = document.getElementById('activitiesBody');
+            tbody.innerHTML = '';
+
+            // Aggiungi riga dei filtri
+            const filterRow = document.createElement('tr');
+            filterRow.className = 'filter-row';
+            filterRow.innerHTML = `
+                <td><input type="checkbox" onclick="toggleAllSelection(this.checked)"></td>
+                <td><input type="text" placeholder="Filtra tag"
+                    onchange="updateFilter('tags', this.value)"><button onclick="filters.tags=''; renderActivities()">reset</button></td>
+                <td><input type="text" placeholder="Filtra attività"
+                    onchange="updateFilter('text', this.value)"><button onclick="filters.text=''; renderActivities()">reset</button></td>
+                <td><input type="text" placeholder="Filtra data"
+                    onchange="updateFilter('date', this.value)"><button onclick="filters.date=''; renderActivities()">reset</button></td>
+            `;
+            tbody.appendChild(filterRow);
+
+            const filterValues = document.createElement('tr');
+            filterValues.className = 'filter-row';
+            filterValues.innerHTML = `
+                <td><button onclick="filters = {
+            tags: '',
+            text: '',
+            date: ''
+        };renderActivities()">Rimuovi filtri</button></td>
+                <td><span id="fltTag"></span></td>
+                <td><span id="fltAct"></span></td>
+                <td><span id="fltDate"></span></td>
+            `;
+            tbody.appendChild(filterValues);
+
+            // Filtra e renderizza le attività
+            const filteredActivities = applyFilters(activities);
+            document.getElementById("fltTag").innerHTML = filters.tags;
+            document.getElementById("fltAct").innerHTML = filters.text;
+            document.getElementById("fltDate").innerHTML = filters.date;
+            filteredActivities.forEach(activity => {
+                const row = document.createElement('tr');
+                row.className = `clickable ${editingId === activity.id ? 'editing' : ''}
+                    ${selectedActivities.has(activity.id) ? 'selected-row' : ''}`;
+
+                // Checkbox di selezione
+                const selectCell = document.createElement('td');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = selectedActivities.has(activity.id); // Mantiene lo stato corretto
+                checkbox.onclick = (e) => {
+                    e.stopPropagation(); // Previene l'attivazione del click della riga
+                    if (selectedActivities.has(activity.id)) {
+                        selectedActivities.delete(activity.id);
+                    } else {
+                        selectedActivities.add(activity.id);
+                console.log("Aggiungo",activity.id);
+                    }
+                };
+                selectCell.appendChild(checkbox);
+console.log("selectedActivities=",selectedActivities);
+                // Tag
+                const tagsCell = document.createElement('td');
+                if (editingId === activity.id) {
+                    const tagsInput = document.createElement('input');
+                    tagsInput.type = 'text';
+                    tagsInput.id = `edit-tags-${activity.id}`;
+                    tagsInput.value = activity.tags.join(', ');
+                    tagsCell.appendChild(tagsInput);
+                } else {
+                    activity.tags.forEach(tag => {
+                        const tagSpan = document.createElement('span');
+                        tagSpan.className = 'tag';
+                        tagSpan.textContent = tag;
+                        tagsCell.appendChild(tagSpan);
+                    });
+                }
+
+                // Testo
+                const textCell = document.createElement('td');
+                if (editingId === activity.id) {
+                    const textInput = document.createElement('input');
+                    textInput.type = 'text';
+                    textInput.id = `edit-text-${activity.id}`;
+                    textInput.value = activity.text;
+                    textCell.appendChild(textInput);
+
+                    // Aggiungi pulsanti di conferma/annulla
+                    const confirmButton = document.createElement('button');
+                    confirmButton.textContent = '✓';
+                    confirmButton.onclick = (e) => {
+                        e.stopPropagation();
+                        saveEdit(activity.id);
+                    };
+
+                    const cancelButton = document.createElement('button');
+                    cancelButton.textContent = '✗';
+                    cancelButton.onclick = (e) => {
+                        e.stopPropagation();
+                        cancelEditing();
+                    };
+
+                    textCell.appendChild(confirmButton);
+                    textCell.appendChild(cancelButton);
+                } else {
+                    textCell.textContent = activity.text;
+                }
+
+                // Data
+                const dateCell = document.createElement('td');
+                dateCell.textContent = new Date(activity.date).toLocaleString('it-IT', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }).replace(' alle ore ', ' - ');
+
+                row.appendChild(selectCell);
+                row.appendChild(tagsCell);
+                row.appendChild(textCell);
+                row.appendChild(dateCell);
+
+                // Aggiungi evento click alla riga solo se non è in modalità modifica
+                if (editingId !== activity.id) {
+                    row.onclick = () => handleRowClick(activity);
+                }
+
+                tbody.appendChild(row);
+            });
+        }
+
+        // Funzioni per la gestione della selezione
+        function toggleSelection(id) {
+            if (selectedActivities.has(id)) {
+                selectedActivities.delete(id);
+            } else {
+                selectedActivities.add(id);
+            }
+        }
+
+        function toggleAllSelection(checked) {
+            if (checked) {
+                applyFilters(activities).forEach(activity =>
+                    selectedActivities.add(activity.id));
+            } else {
+                selectedActivities.clear();
+            }
+            renderActivities();
+        }
+
+        // Funzione per aggiornare i filtri
+        function updateFilter(field, value) {
+            filters[field] = value;
+            renderActivities();
+        }
+
+
+        // Funzioni di esportazione modificate
+        function handleExportFile(selectedOnly) {
+            const format = prompt('Scegli il formato di esportazione (html/csv):', 'html');
+            if (format === 'html') {
+                saveToHtml(selectedOnly);
+            } else if (format === 'csv') {
+                saveToCsv(selectedOnly);
+            }
+        }
+
+        function getExportActivities(selectedOnly) {
+            let exportActivities = applyFilters(activities);
+            if (selectedOnly) {
+                exportActivities = exportActivities.filter(activity =>
+                    selectedActivities.has(activity.id));
+            }
+            return exportActivities;
+        }
+
+        // Modifica delle funzioni di salvataggio per gestire il nome del database
+        async function handleSaveFile() {
+            const dbName = document.getElementById('databaseName').value;
+            const filename = `${dbName}.json`;
+
+            if (await fileExists(filename)) {
+                if (await confirmDialog.show(`Il file ${filename} esiste già. Vuoi sovrascriverlo?`)) {
+                    saveToJson(filename);
+                }
+            } else {
+                saveToJson(filename);
+            }
+        }
+
+        // Funzione fittizia per simulare il controllo dell'esistenza del file
+        async function fileExists(filename) {
+            // In un'implementazione reale, questo dovrebbe controllare
+            // effettivamente l'esistenza del file
+            return true;
+        }
+
+        // Modifica della gestione del nuovo file
+        async function handleNewFile() {
+            if (hasUnsavedChanges) {
+                if (await confirmDialog.show('Vuoi salvare le modifiche prima di creare un nuovo database?')) {
+                    await handleSaveFile();
+                }
+            }
+            activities = [];
+            selectedActivities.clear();
+            existingTags.clear();
+            document.getElementById('databaseName').value = 'senza_titolo';
+            hasUnsavedChanges = false;
+            renderActivities();
+        }
+
+
+
+        // Funzione per salvare la tabella in HTML
+function saveToHtml() {
+    const selected = activities.filter(activity => selectedActivities.has(activity.id)); // Filtra le attività selezionate
+console.log("Salvo:", selected);
+    const html = `
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>Attività Salvate</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    table { border-collapse: collapse; width: 100%; }
+                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                    .tag { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; margin: 2px; display: inline-block; }
+                </style>
+            </head>
+            <body>
+                <h1>Attività Salvate</h1>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Attività</th>
+                            <th>Tag</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${selected.map(activity => `
+                            <tr>
+                                <td>${new Date(activity.date).toLocaleString('it-IT', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                              }).replace(' alle ore ', ' - ')}</td>
+                                <td>${activity.text}</td>
+                                <td>${activity.tags.map(tag => `<span class="tag">${tag}</span>`).join(' ')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </body>
+        </html>
+    `;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'attivita.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+
+        // Inizializzazione degli event listener
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('th[data-sort]').forEach(th => {
+                th.addEventListener('click', () => sortActivities(th.dataset.sort));
+            });
+        });
+    </script>
+</body>
+</html>
