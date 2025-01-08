@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Pasting Tool</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: auto;
+            height: 100vh;
+            width: 100vw;
+        }
+        canvas {
+            border: 1px solid black;
+            margin-top: 20px;
+            max-width: 100%;
+            height: auto;
+        }
+        #videoContainer {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="videoContainer">
+            <video id="youtubeVideo" width="560" height="315" controls crossorigin="anonymous">
+                <source src="https://www.youtube.com/embed/3HmC52I3caw" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            <button id="copyFrame">Copy Frame</button>
+        </div>
+        <canvas id="gameCanvas" width="3200" height="2000"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        const imgWidth = 320;
+        const imgHeight = 200;
+
+        let pasteX = Math.floor((canvasWidth - imgWidth) / 2 / imgWidth);
+        let pasteY = Math.floor((canvasHeight - imgHeight) / 2 / imgHeight);
+        
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'ArrowRight':
+                    pasteX++;
+                    break;
+                case 'ArrowLeft':
+                    pasteX--;
+                    break;
+                case 'ArrowDown':
+                    pasteY++;
+                    break;
+                case 'ArrowUp':
+                    pasteY--;
+                    break;
+            }
+        });
+
+        document.addEventListener('paste', (e) => {
+            const items = e.clipboardData.items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.startsWith('image')) {
+                    const file = items[i].getAsFile();
+                    const img = new Image();
+                    const reader = new FileReader();
+
+                    reader.onload = (event) => {
+                        img.onload = () => {
+                            const x = pasteX * imgWidth;
+                            const y = pasteY * imgHeight;
+                            ctx.drawImage(img, x, y, imgWidth, imgHeight);
+                        };
+                        img.src = event.target.result;
+                    };
+
+                    reader.readAsDataURL(file);
+                }
+            }
+        });
+
+        document.getElementById('copyFrame').addEventListener('click', () => {
+            const video = document.querySelector('#youtubeVideo');
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = video.videoWidth;
+            tempCanvas.height = video.videoHeight;
+            tempCtx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            tempCanvas.toBlob((blob) => {
+                const item = new ClipboardItem({ 'image/png': blob });
+                navigator.clipboard.write([item]).then(() => {
+                    alert('Frame copied to clipboard!');
+                }).catch(err => {
+                    console.error('Failed to copy frame:', err);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
