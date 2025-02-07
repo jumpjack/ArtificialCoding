@@ -2,8 +2,8 @@
 <html lang="it">
 <head>
   <meta charset="utf-8">
-  <title>Qix – Clone Mobile con Linee Casuali</title>
-  <!-- Per garantire una buona visualizzazione su mobile -->
+  <title>Qix – Clone Mobile con Linee Casuali (Aggiornato)</title>
+  <!-- Per visualizzare correttamente su dispositivi mobili -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -23,21 +23,21 @@
 <body>
   <canvas id="gameCanvas" width="600" height="400"></canvas>
   <script>
-    // -----------------------------
+    // --------------------------------
     // Impostazioni e costanti di gioco
-    // -----------------------------
+    // --------------------------------
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const WIDTH = canvas.width;
     const HEIGHT = canvas.height;
     
-    // La griglia (per il flood fill e per definire l’area “sicura”)
+    // Griglia per definire l'area catturata (safe zone)
     const CELL_SIZE = 4;
     const COLS = Math.floor(WIDTH / CELL_SIZE);
     const ROWS = Math.floor(HEIGHT / CELL_SIZE);
-    const BORDER_CELLS = 5; // spessore iniziale del bordo (area già catturata)
+    const BORDER_CELLS = 5; // spessore iniziale del bordo già catturato
     
-    // Inizializziamo la griglia: le celle lungo il bordo sono catturate
+    // Inizializziamo la griglia: il bordo è già catturato
     let grid = [];
     for (let x = 0; x < COLS; x++) {
       grid[x] = [];
@@ -50,9 +50,11 @@
       }
     }
     
-    // -----------------------------
-    // Oggetti di gioco: Giocatore
-    // -----------------------------
+    // --------------------------------
+    // Oggetti di gioco
+    // --------------------------------
+    
+    // Il giocatore: parte all’interno della safe zone
     let player = {
       x: WIDTH / 2,
       y: BORDER_CELLS * CELL_SIZE,
@@ -60,35 +62,30 @@
       speed: 2,
       dx: 0,
       dy: 0,
-      isDrawing: false, // true se sta tracciando una scia (ovvero se è fuori dall'area sicura)
-      trail: []         // memorizza i punti percorsi durante la scia
+      isDrawing: false, // true quando sta tracciando la linea (cioè è fuori dall’area sicura)
+      trail: []         // memorizza i punti della traccia
     };
     
-    // -----------------------------
-    // Oggetto Qix (nemico) con linee casuali
-    // -----------------------------
+    // Il Qix (nemico) che si muove con segmenti casuali
     let enemy = {
       x: WIDTH / 2,
       y: HEIGHT / 2,
       speed: 1.5,
-      dx: 1.5, // inizialmente verso destra
+      dx: 1.5, // direzione iniziale verso destra
       dy: 0,
-      // Timer per decidere quando cambiare direzione
-      randomTimer: Math.floor(Math.random() * 60) + 30,
-      // Memorizza il punto in cui è iniziato l’ultimo segmento
+      randomTimer: Math.floor(Math.random() * 60) + 30, // timer per il cambio direzione
       currentLineStart: { x: WIDTH / 2, y: HEIGHT / 2 },
-      // Array dei segmenti già tracciati (per disegnare le “linee casuali”)
-      trailSegments: []
+      trailSegments: [] // array per memorizzare i segmenti tracciati (linee casuali)
     };
     
     // Stato del gioco
     let gameOver = false;
     let gameWin = false;
-    const WIN_THRESHOLD = 0.75; // si vince catturando il 75% dell'area
+    const WIN_THRESHOLD = 0.75; // per vincere occorre catturare il 75% dell'area
     
-    // -----------------------------
-    // Gestione degli input
-    // -----------------------------
+    // --------------------------------
+    // Gestione degli input: tastiera e touch
+    // --------------------------------
     // Tastiera (desktop)
     document.addEventListener('keydown', (e) => {
       if (gameOver || gameWin) return;
@@ -107,7 +104,7 @@
       }
     });
     
-    // Touch (mobile): registra il tocco iniziale e determina la direzione in base allo swipe
+    // Touch (mobile): usa lo swipe per impostare la direzione
     let touchStart = null;
     canvas.addEventListener("touchstart", function(e) {
       if (gameOver || gameWin) return;
@@ -121,7 +118,6 @@
       let touch = e.touches[0];
       let diffX = touch.clientX - touchStart.x;
       let diffY = touch.clientY - touchStart.y;
-      // Se il movimento è principalmente orizzontale
       if (Math.abs(diffX) > Math.abs(diffY)) {
         if (diffX > 10) {
           player.dx = 1;
@@ -139,16 +135,16 @@
           player.dy = -1;
         }
       }
-      e.preventDefault(); // impedisce lo scroll della pagina
+      e.preventDefault();
     });
     
     canvas.addEventListener("touchend", function(e) {
       touchStart = null;
     });
     
-    // -----------------------------
+    // --------------------------------
     // Funzioni di utilità
-    // -----------------------------
+    // --------------------------------
     function isCaptured(x, y) {
       let gx = Math.floor(x / CELL_SIZE);
       let gy = Math.floor(y / CELL_SIZE);
@@ -160,39 +156,25 @@
       return Math.hypot(x2 - x1, y2 - y1);
     }
     
-    // Collisione tra un segmento e un cerchio (usata per controllare se il Qix tocca la scia)
-    function lineCircleCollision(x1, y1, x2, y2, cx, cy, radius) {
-      let acx = cx - x1;
-      let acy = cy - y1;
-      let abx = x2 - x1;
-      let aby = y2 - y1;
-      let abLenSq = abx * abx + aby * aby;
-      let abDotAc = acx * abx + acy * aby;
-      let t = abDotAc / abLenSq;
-      t = Math.max(0, Math.min(1, t));
-      let closestX = x1 + abx * t;
-      let closestY = y1 + aby * t;
-      return distance(cx, cy, closestX, closestY) <= radius;
-    }
+    // (La funzione lineCircleCollision non viene più usata, poiché la collisione con il Qix
+    // sarà controllata solo se il giocatore (il suo “corpo”) tocca il nemico.)
     
-    // -----------------------------
-    // Logica di aggiornamento
-    // -----------------------------
-    
-    // Aggiorna il giocatore: muove e, se esce dall’area sicura, inizia a tracciare la scia
+    // --------------------------------
+    // Logica di aggiornamento del giocatore
+    // --------------------------------
     function updatePlayer() {
       if (gameOver || gameWin) return;
       
       let nextX = player.x + player.dx * player.speed;
       let nextY = player.y + player.dy * player.speed;
       
-      // Se il giocatore esce dal canvas, è game over
+      // Se esce dal canvas, consideriamo game over
       if (nextX < 0 || nextX > WIDTH || nextY < 0 || nextY > HEIGHT) {
         gameOver = true;
         return;
       }
       
-      // Se esce dalla safe zone, inizia la traccia
+      // Se sta per uscire dalla safe zone, inizia la traccia (isDrawing diventa true)
       if (!player.isDrawing && !isCaptured(nextX, nextY)) {
         player.isDrawing = true;
         player.trail = [];
@@ -206,7 +188,7 @@
       player.x = nextX;
       player.y = nextY;
       
-      // Se rientra nell'area catturata, esegui il flood fill e termina la traccia
+      // Se il giocatore rientra nell'area catturata, esegue il flood fill per "riempire" l'area
       if (player.isDrawing && isCaptured(player.x, player.y)) {
         fillCapturedArea();
         player.isDrawing = false;
@@ -214,9 +196,9 @@
       }
     }
     
-    // Aggiornamento del Qix: si muove seguendo segmenti rettilinei casuali;
-    // al termine di un segmento (timer scaduto o collisione con il bordo catturato)
-    // registra il segmento corrente e sceglie una nuova direzione.
+    // --------------------------------
+    // Logica di aggiornamento del Qix (nemico)
+    // --------------------------------
     function updateEnemy() {
       if (gameOver || gameWin) return;
       
@@ -226,7 +208,7 @@
       let nextY = enemy.y + enemy.dy;
       let collided = false;
       
-      // Controllo orizzontale: se la cella verso cui si sta muovendo è catturata, inverti la componente orizzontale
+      // Controllo orizzontale: se il movimento porta in una cella catturata, inverti dx
       let cellX = Math.floor(nextX / CELL_SIZE);
       let cellY = Math.floor(enemy.y / CELL_SIZE);
       if (cellX < 0 || cellX >= COLS || grid[cellX][cellY]) {
@@ -234,7 +216,7 @@
         collided = true;
       }
       
-      // Controllo verticale
+      // Controllo verticale: se il movimento porta in una cella catturata, inverti dy
       cellX = Math.floor(enemy.x / CELL_SIZE);
       cellY = Math.floor(nextY / CELL_SIZE);
       if (cellY < 0 || cellY >= ROWS || grid[cellX][cellY]) {
@@ -242,8 +224,8 @@
         collided = true;
       }
       
-      // Se è avvenuta una collisione, registra il segmento corrente e resetta il timer
-      if (collided) {
+      // Se c'è stata una collisione oppure il timer è scaduto, registra il segmento corrente
+      if (collided || enemy.randomTimer <= 0) {
         enemy.trailSegments.push({
           x1: enemy.currentLineStart.x,
           y1: enemy.currentLineStart.y,
@@ -251,34 +233,29 @@
           y2: enemy.y
         });
         enemy.currentLineStart = { x: enemy.x, y: enemy.y };
-        enemy.randomTimer = Math.floor(Math.random() * 60) + 30;
-      }
-      
-      // Se il timer è scaduto, cambia direzione in modo casuale
-      if (enemy.randomTimer <= 0) {
-        enemy.trailSegments.push({
-          x1: enemy.currentLineStart.x,
-          y1: enemy.currentLineStart.y,
-          x2: enemy.x,
-          y2: enemy.y
-        });
-        enemy.currentLineStart = { x: enemy.x, y: enemy.y };
-        let angle = Math.random() * 2 * Math.PI;
-        enemy.dx = enemy.speed * Math.cos(angle);
-        enemy.dy = enemy.speed * Math.sin(angle);
+        // Se il timer è scaduto, scegli una nuova direzione casuale
+        if (enemy.randomTimer <= 0) {
+          let angle = Math.random() * 2 * Math.PI;
+          enemy.dx = enemy.speed * Math.cos(angle);
+          enemy.dy = enemy.speed * Math.sin(angle);
+        }
         enemy.randomTimer = Math.floor(Math.random() * 60) + 30;
       }
       
       enemy.x += enemy.dx;
       enemy.y += enemy.dy;
       
-      // Per non accumulare troppi segmenti, limitiamo la lunghezza dell'array
+      // Limitiamo la lunghezza della cronologia dei segmenti
       if (enemy.trailSegments.length > 300) {
         enemy.trailSegments.shift();
       }
     }
     
-    // Flood fill per “catturare” l’area al termine della traccia del giocatore
+    // --------------------------------
+    // Flood fill per catturare l'area chiusa
+    // --------------------------------
+    // Il flood fill parte dalla cella in cui si trova il Qix; tutte le celle NON raggiunte
+    // verranno "riempite" (catturate), in modo che l'area che contiene il nemico resti aperta.
     function fillCapturedArea() {
       let blocked = [];
       for (let x = 0; x < COLS; x++) {
@@ -287,7 +264,7 @@
           blocked[x][y] = false;
         }
       }
-      // Le celle attraversate dalla scia sono “bloccate”
+      // Le celle attraversate dalla traccia del giocatore sono "bloccate"
       player.trail.forEach(point => {
         let gx = Math.floor(point.x / CELL_SIZE);
         let gy = Math.floor(point.y / CELL_SIZE);
@@ -304,7 +281,7 @@
         }
       }
       
-      // Partiamo dalla cella in cui si trova il Qix
+      // Iniziamo dalla cella in cui si trova il Qix
       let startX = Math.floor(enemy.x / CELL_SIZE);
       let startY = Math.floor(enemy.y / CELL_SIZE);
       startX = Math.max(0, Math.min(COLS - 1, startX));
@@ -314,7 +291,7 @@
       queue.push({ x: startX, y: startY });
       visited[startX][startY] = true;
       
-      // Flood fill in 4 direzioni
+      // Flood fill nelle 4 direzioni
       while (queue.length > 0) {
         let cell = queue.shift();
         let cx = cell.x;
@@ -335,7 +312,7 @@
         });
       }
       
-      // Qualsiasi cella non raggiunta dalla flood fill viene “catturata”
+      // Le celle non raggiunte dalla flood fill vengono catturate
       for (let x = 0; x < COLS; x++) {
         for (let y = 0; y < ROWS; y++) {
           if (!grid[x][y] && !visited[x][y]) {
@@ -345,15 +322,15 @@
       }
     }
     
-    // -----------------------------
+    // --------------------------------
     // Rendering
-    // -----------------------------
+    // --------------------------------
     function draw() {
       // Pulisce il canvas
       ctx.fillStyle = 'black';
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
       
-      // Disegna l'area catturata (in verde scuro)
+      // Disegna l'area catturata (safe zone) in verde scuro
       for (let x = 0; x < COLS; x++) {
         for (let y = 0; y < ROWS; y++) {
           if (grid[x][y]) {
@@ -363,7 +340,7 @@
         }
       }
       
-      // Disegna la scia del giocatore (in bianco)
+      // Disegna la traccia del giocatore (in bianco), se presente
       if (player.trail.length > 1) {
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 2;
@@ -381,7 +358,7 @@
       ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
       ctx.fill();
       
-      // Disegna il Qix: le “linee casuali” tracciate
+      // Disegna il Qix: le linee casuali tracciate
       ctx.strokeStyle = 'magenta';
       ctx.lineWidth = 2;
       enemy.trailSegments.forEach(seg => {
@@ -391,13 +368,13 @@
         ctx.stroke();
       });
       
-      // Disegna il “corpo” del Qix come un piccolo cerchio
+      // Disegna il corpo del Qix (un cerchio)
       ctx.fillStyle = 'magenta';
       ctx.beginPath();
       ctx.arc(enemy.x, enemy.y, 4, 0, Math.PI * 2);
       ctx.fill();
       
-      // Interfaccia utente: stato e percentuale di area catturata
+      // Mostra l'interfaccia utente con lo stato e la percentuale catturata
       ctx.fillStyle = 'white';
       ctx.font = '16px sans-serif';
       if (gameOver) {
@@ -406,6 +383,7 @@
         ctx.fillText("You Win!", WIDTH / 2 - 40, HEIGHT / 2);
       }
       
+      // Calcola la percentuale di area catturata
       let capturedCount = 0;
       for (let x = 0; x < COLS; x++) {
         for (let y = 0; y < ROWS; y++) {
@@ -416,26 +394,20 @@
       ctx.fillText("Captured: " + capturedPercent + "%", 10, 20);
     }
     
-    // Aggiornamento di tutti gli elementi
+    // --------------------------------
+    // Aggiornamento complessivo del gioco
+    // --------------------------------
     function update() {
       updatePlayer();
       updateEnemy();
       
-      // Se il Qix tocca la scia del giocatore, game over
-      if (player.isDrawing) {
-        for (let i = 0; i < player.trail.length - 1; i++) {
-          let p1 = player.trail[i];
-          let p2 = player.trail[i+1];
-          if (lineCircleCollision(p1.x, p1.y, p2.x, p2.y, enemy.x, enemy.y, 4)) {
-            gameOver = true;
-          }
-        }
-        if (distance(player.x, player.y, enemy.x, enemy.y) < player.radius + 4) {
-          gameOver = true;
-        }
+      // Controlla la collisione tra il giocatore e il Qix
+      // La condizione viene verificata solo se il giocatore NON è in un'area catturata
+      if (!isCaptured(player.x, player.y) && distance(player.x, player.y, enemy.x, enemy.y) < player.radius + 4) {
+        gameOver = true;
       }
       
-      // Verifica se l'area catturata raggiunge la soglia di vittoria
+      // Verifica se la percentuale catturata raggiunge la soglia di vittoria
       let capturedCount = 0;
       for (let x = 0; x < COLS; x++) {
         for (let y = 0; y < ROWS; y++) {
@@ -447,7 +419,9 @@
       }
     }
     
+    // --------------------------------
     // Ciclo principale del gioco
+    // --------------------------------
     function gameLoop() {
       update();
       draw();
