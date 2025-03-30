@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Circonferenze su Mappa Equirettangolare</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    #canvas-container {
+      margin: 20px auto;
+      width: 800px;
+      height: 400px;
+      position: relative;
+    }
+    canvas {
+      border: 1px solid #000;
+    }
+    .controls {
+      margin: 10px;
+    }
+    button {
+      padding: 8px 16px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    input[type="range"] {
+      width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <h1>4 Circonferenze su Mappa Equirettangolare</h1>
+  <div class="controls">
+    <label for="radius-slider">Raggio massimo (gradi): </label>
+    <input type="range" id="radius-slider" min="5" max="180" value="90">
+    <span id="radius-value">90</span>°
+    <button id="animate-btn">Avvia Animazione</button>
+  </div>
+  <div id="canvas-container">
+    <canvas id="grid" width="800" height="400"></canvas>
+  </div>
+  <p>Trascina il centro (punto blu) con il mouse!</p>
+
+  <script>
+    const canvas = document.getElementById('grid');
+    const ctx = canvas.getContext('2d');
+    const radiusSlider = document.getElementById('radius-slider');
+    const radiusValue = document.getElementById('radius-value');
+    const animateBtn = document.getElementById('animate-btn');
+
+    // Parametri
+    let center = { x: canvas.width / 2, y: canvas.height / 2 };
+    let maxRadius = parseInt(radiusSlider.value);
+    let isDragging = false;
+    let isAnimating = false;
+    let animationId = null;
+    const circleColors = ['#FF0000', '#00FF00', '#0000FF', '#FF00FF'];
+
+    // Carica l'immagine di sfondo (Blue Marble)
+    const backgroundImg = new Image();
+    backgroundImg.src = 'https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/world.topo.bathy.200412.3x5400x2700.jpg';
+    backgroundImg.onload = () => redraw();
+
+    // Converti coordinate canvas (x,y) in lat/lon (φ,λ)
+    function canvasToLatLon(x, y) {
+      const lon = (x / canvas.width) * 360 - 180;
+      const lat = 90 - (y / canvas.height) * 180;
+      return { lat, lon };
+    }
+
+    // Converti lat/lon (φ,λ) in coordinate canvas (x,y)
+    function latLonToCanvas(lat, lon) {
+      const x = ((lon + 180) / 360) * canvas.width;
+      const y = ((90 - lat) / 180) * canvas.height;
+      return { x, y };
+    }
+
+    // Disegna una circonferenza gestendo il wrapping e i casi polari
+    function drawCircle(radius, color) {
+      const centerLatLon = canvasToLatLon(center.x, center.y);
+      const steps = 200; // Aumentato per precisione
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+
+      let lastPoint = null;
+      let isFirstPoint = true;
+
+      for (let i = 0; i <= steps; i++) {
+        const angle = (i / steps) * 2 * Math.PI;
+        const lat = Math.asin(
+          Math.sin(centerLatLon.lat * Math.PI / 180) * Math.cos(radius * Math.PI / 180) +
+          Math.cos(centerLatLon.lat * Math.PI / 180) * Math.sin(radius * Math.PI / 180) * Math.cos(angle)
+        ) * 180 / Math.PI;
+
+        let lon = centerLatLon.lon + Math.atan2(
+          Math.sin(angle) * Math.sin(radius * Math.PI / 180) * Math.cos(centerLatLon.lat * Math.PI / 180),
+          Math.cos(radius * Math.PI / 180) - Math.sin(centerLatLon.lat * Math.PI / 180) * Math.sin(lat * Math.PI / 180)
+        ) * 180 / Math.PI;
+
+        // Gestione del wrapping della longitudine
+        lon = ((lon + 180) % 360 + 360) % 360 - 180; // Normalizza tra -180 e 180
+
+        const point = latLonToCanvas(lat, lon);
+
+        // Gestione dei salti dovuti al wrapping
+        if (lastPoint && Math.abs(point.x - lastPoint.x) > canvas.width / 2) {
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(point.x, point.y);
+        } else if (isFirstPoint) {
+          ctx.moveTo(point.x, point.y);
+          isFirstPoint = false;
+        } else {
+          ctx.lineTo(point.x, point.y);
+        }
+
+        lastPoint = point;
+      }
+      ctx.stroke();
+    }
+
+    // Animazione
+    function animate() {
+      if (isAnimating) {
+        maxRadius += 1;
+        if (maxRadius > 180) maxRadius = 5;
+        radiusSlider.value = maxRadius;
+        radiusValue.textContent = maxRadius;
+        redraw();
+        animationId = requestAnimationFrame(animate);
+      }
+    }
+
+    // Ridisegna tutto
+    function redraw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Sfondo
+      if (backgroundImg.complete) {
+        ctx.drawImage(backgroundImg, 0, 0, canvas.width, canvas.height);
+      }
+
+      // Disegna 4 circonferenze concentriche
+      const radii = [maxRadius * 0.25, maxRadius * 0.5, maxRadius * 0.75, maxRadius];
+      radii.forEach((r, i) => drawCircle(r, circleColors[i]));
+
+      // Centro
+      ctx.fillStyle = 'blue';
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, 5, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    // Event Listeners
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const dist = Math.sqrt((x - center.x) ** 2 + (y - center.y) ** 2);
+      if (dist <= 10) isDragging = true;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const rect = canvas.getBoundingClientRect();
+        center.x = e.clientX - rect.left;
+        center.y = e.clientY - rect.top;
+        redraw();
+      }
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    radiusSlider.addEventListener('input', () => {
+      maxRadius = parseInt(radiusSlider.value);
+      radiusValue.textContent = maxRadius;
+      redraw();
+    });
+
+    animateBtn.addEventListener('click', () => {
+      isAnimating = !isAnimating;
+      animateBtn.textContent = isAnimating ? 'Ferma Animazione' : 'Avvia Animazione';
+      if (isAnimating) animate();
+      else cancelAnimationFrame(animationId);
+    });
+
+    // Inizializzazione
+    redraw();
+  </script>
+</body>
+</html>
