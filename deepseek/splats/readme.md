@@ -1,1 +1,1 @@
-Scaniverse splats lister
+[Scaniverse splats lister](https://jumpjack.github.io/ArtificialCoding/deepseek/splats).
