@@ -87,7 +87,7 @@ footer {
     max-width: 500px;
 }
 
-#urlInput {
+#urlUser {
     flex: 1;
     padding: 8px;
     border: 1px solid #ccc;
@@ -96,6 +96,15 @@ footer {
     margin-right: -1px;
 }
 
+
+#urlScan {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px 0 0 4px;
+    outline: none;
+    margin-right: -1px;
+}
 #downloadUrlBtn, #infoUrlBtn, #mapBtn {
     padding: 8px 16px;
     background-color: #3498db;
