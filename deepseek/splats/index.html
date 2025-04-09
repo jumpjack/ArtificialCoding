@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPZ/PLY Converter</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+</head>
+<body>
+    <h1>SPZ/PLY File Converter</h1>
+
+    <div class="converter-box">
+        <input type="file" id="fileInput" accept=".spz,.ply">
+        <label for="fileInput" class="custom-file-upload">
+            Seleziona file SPZ o PLY
+        </label>
+
+        <div class="url-container">
+            <input type="text" id="urlUser" value="https://scaniverse.com/@jumpjack">
+            <button id="mapBtn">Map</button>
+        </div>
+        <div class="url-container">
+            <input type="text" id="urlScan" value="https://scaniverse.com/scan/cqbfh4wyiv3jp7z3">
+            <button id="downloadUrlBtn">Download and convert</button>
+            <button id="infoUrlBtn">Info</button>
+        </div>
+        <div id="targetUrlDisplay" class="target-url"></div>
+
+        <div class="progress-container">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+        
+        <div id="status">Pronto per la conversione</div>
+        <div id="fileInfo" class="file-info">
+            <div id="inputFileSize"></div>
+            <div id="outputFileSize"></div>
+            <div id="conversionTime"></div>
+        </div>
+        <a id="downloadLink" href="#" download>Scarica file convertito</a>
+    </div>
+
+    <div id="mapContainer"></div>
+
+  <div style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; margin-top: 20px;">
+    <table id="tableScans" style="width: 100%; border-collapse: collapse;">
+        <tr style="position: sticky; top: 0; background-color: #f1f1f1; z-index: 1;">
+            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Titolo</th>
+            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Data</th>
+            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Views</th>
+            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Likes</th>
+            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Visibilità</th>
+            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Link</th>
+        </tr>
+    </table>
+</div>
+  <br>
+    Created with websim + deepseek + claude.ai + chatgpt +.....<br>  
+    Based on <a href="https://github.com/arrival-space/spz-js">https://github.com/arrival-space/spz-js</a><br>
+    See also:<br>
+-   <a href="https://scaniverse.8thwall.app/model-viewer/">SPZ/PLY viewer/</a> (Scaniverse official)<br>
+-  <a href="https://sandbox.babylonjs.com/">BabylonJS sandobx PLY/SPZ/SPLAT viewer</a>   <br>
+-  <a href="https://superspl.at/editor">.PLY/.SPLAT editor</a> (no .SPZ)<br>
+-  <a href="https://storysplat.com/editor">.SPZ/.PLY/.SPLAT editor</a><br>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "spz-js": "https://esm.sh/spz-js@1.2.2",
+        "leaflet": "https://esm.sh/leaflet@1.9.4"
+      }
+    }
+    </script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
