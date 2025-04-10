@@ -1,13 +1,14 @@
+
 <!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QIX Remake with Touch</title>
+    <title>QIX Remake with Border Constraint</title>
     <style>
         canvas {
             border: 1px solid black;
-            touch-action: none; /* Disabilita lo zoom/pan predefinito */
+            touch-action: none;
         }
     </style>
 </head>
@@ -23,26 +24,30 @@
         const gridSize = 10;
         let claimedArea = new Set();
         const border = [
-            { x: 0, y: 0 }, { x: 800, y: 0 }, { x: 800, y: 600 }, { x: 0, y: 600 }
+            { x: 0, y: 0 }, { x: 800, y: 0 }, { x: 800, y: 600 }, { x: 0, y: 600 }, { x: 0, y: 0 }
         ];
 
         // Controlli tastiera
         const keys = {};
-        document.addEventListener('keydown', (e) => keys[e.key] = true);
-        document.addEventListener('keyup', (e) => keys[e.key] = false);
+        document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
+        document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
         // Controlli touch
         let touchActive = false;
         let touchStartX = 0;
         let touchStartY = 0;
+        let touchDrawing = false;
 
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             const touch = e.touches[0];
             touchStartX = touch.clientX - canvas.offsetLeft;
             touchStartY = touch.clientY - canvas.offsetTop;
-            player.drawing = true;
             touchActive = true;
+            if (e.touches.length === 2) { // Doppio tocco per disegnare
+                touchDrawing = true;
+                player.drawing = true;
+            }
         });
 
         canvas.addEventListener('touchmove', (e) => {
@@ -52,29 +57,33 @@
             const touchX = touch.clientX - canvas.offsetLeft;
             const touchY = touch.clientY - canvas.offsetTop;
 
-            player.x = Math.max(0, Math.min(800, touchX));
-            player.y = Math.max(0, Math.min(600, touchY));
-            if (player.drawing) {
-                player.path.push({ x: player.x, y: player.y });
+            if (touchDrawing) {
+                player.x = Math.max(0, Math.min(800, touchX));
+                player.y = Math.max(0, Math.min(600, touchY));
+                if (player.drawing) {
+                    player.path.push({ x: player.x, y: player.y });
+                }
+            } else {
+                moveAlongBorder(touchX, touchY);
             }
         });
 
         canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
-            if (touchActive) {
+            if (touchActive && touchDrawing) {
                 endDrawing();
-                touchActive = false;
+                touchDrawing = false;
             }
+            touchActive = false;
         });
 
-        // Funzione per disegnare il bordo
+        // Disegna il bordo
         function drawBorder() {
             ctx.beginPath();
             ctx.moveTo(border[0].x, border[0].y);
             for (let i = 1; i < border.length; i++) {
                 ctx.lineTo(border[i].x, border[i].y);
             }
-            ctx.closePath();
             ctx.strokeStyle = 'blue';
             ctx.lineWidth = 2;
             ctx.stroke();
@@ -102,22 +111,67 @@
             ctx.fillRect(qix.x - 10, qix.y - 10, 20, 20);
         }
 
+        // Muove il giocatore lungo il bordo
+        function moveAlongBorder(targetX, targetY) {
+            let closestPoint = { x: player.x, y: player.y };
+            let minDist = Infinity;
+
+            for (let i = 0; i < border.length - 1; i++) {
+                const p1 = border[i];
+                const p2 = border[i + 1];
+                const closest = closestPointOnSegment(p1, p2, { x: targetX, y: targetY });
+                const dist = Math.hypot(closest.x - targetX, closest.y - targetY);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestPoint = closest;
+                }
+            }
+
+            player.x = closestPoint.x;
+            player.y = closestPoint.y;
+        }
+
+        // Trova il punto più vicino su un segmento
+        function closestPointOnSegment(p1, p2, point) {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const lenSquared = dx * dx + dy * dy;
+            if (lenSquared === 0) return { x: p1.x, y: p1.y };
+
+            let t = ((point.x - p1.x) * dx + (point.y - p1.y) * dy) / lenSquared;
+            t = Math.max(0, Math.min(1, t));
+            return {
+                x: p1.x + t * dx,
+                y: p1.y + t * dy
+            };
+        }
+
         // Movimento del giocatore (tastiera)
         function movePlayer() {
             let moved = false;
-            if (keys['ArrowUp']) { player.y -= player.speed; moved = true; }
-            if (keys['ArrowDown']) { player.y += player.speed; moved = true; }
-            if (keys['ArrowLeft']) { player.x -= player.speed; moved = true; }
-            if (keys['ArrowRight']) { player.x += player.speed; moved = true; }
-            if (keys[' ']) { player.drawing = true; }
-            if (!keys[' '] && player.drawing && !touchActive) { endDrawing(); }
+            const canDraw = keys['a'] || keys['b'];
 
-            // Limiti del canvas
+            if (!canDraw) {
+                if (keys['arrowup']) { moveAlongBorder(player.x, player.y - player.speed); moved = true; }
+                if (keys['arrowdown']) { moveAlongBorder(player.x, player.y + player.speed); moved = true; }
+                if (keys['arrowleft']) { moveAlongBorder(player.x - player.speed, player.y); moved = true; }
+                if (keys['arrowright']) { moveAlongBorder(player.x + player.speed, player.y); moved = true; }
+            } else if (canDraw && (keys['arrowup'] || keys['arrowdown'] || keys['arrowleft'] || keys['arrowright'])) {
+                player.drawing = true;
+                if (keys['arrowup']) { player.y -= player.speed; moved = true; }
+                if (keys['arrowdown']) { player.y += player.speed; moved = true; }
+                if (keys['arrowleft']) { player.x -= player.speed; moved = true; }
+                if (keys['arrowright']) { player.x += player.speed; moved = true; }
+            }
+
+            if (!keys['a'] && !keys['b'] && player.drawing && !touchDrawing) {
+                endDrawing();
+            }
+
             player.x = Math.max(0, Math.min(800, player.x));
             player.y = Math.max(0, Math.min(600, player.y));
 
-            // Aggiorna il percorso se sta disegnando
-            if (player.drawing && moved && !touchActive) {
+            if (player.drawing && moved) {
                 player.path.push({ x: player.x, y: player.y });
             }
         }
@@ -134,7 +188,7 @@
         function endDrawing() {
             player.drawing = false;
             if (player.path.length > 0) {
-                border.push(...player.path);
+                border.push(...player.path, { x: player.x, y: player.y });
                 fillArea();
                 player.path = [];
             }
@@ -192,6 +246,12 @@
             claimedArea.clear();
             qix.x = 400;
             qix.y = 300;
+            border.length = 5;
+            border[0] = { x: 0, y: 0 };
+            border[1] = { x: 800, y: 0 };
+            border[2] = { x: 800, y: 600 };
+            border[3] = { x: 0, y: 600 };
+            border[4] = { x: 0, y: 0 };
         }
 
         // Loop principale
