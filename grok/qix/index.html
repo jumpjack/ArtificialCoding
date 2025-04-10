@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QIX Remake</title>
+    <title>QIX Remake with Touch</title>
     <style>
         canvas {
             border: 1px solid black;
+            touch-action: none; /* Disabilita lo zoom/pan predefinito */
         }
     </style>
 </head>
@@ -19,16 +20,52 @@
         // Variabili di gioco
         const player = { x: 0, y: 0, speed: 4, drawing: false, path: [] };
         const qix = { x: 400, y: 300, dx: 2, dy: 2 };
-        const gridSize = 10; // Dimensione griglia per semplificare il calcolo delle aree
-        let claimedArea = new Set(); // Aree reclamate
+        const gridSize = 10;
+        let claimedArea = new Set();
         const border = [
             { x: 0, y: 0 }, { x: 800, y: 0 }, { x: 800, y: 600 }, { x: 0, y: 600 }
         ];
 
-        // Controlli
+        // Controlli tastiera
         const keys = {};
         document.addEventListener('keydown', (e) => keys[e.key] = true);
         document.addEventListener('keyup', (e) => keys[e.key] = false);
+
+        // Controlli touch
+        let touchActive = false;
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            touchStartX = touch.clientX - canvas.offsetLeft;
+            touchStartY = touch.clientY - canvas.offsetTop;
+            player.drawing = true;
+            touchActive = true;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!touchActive) return;
+            const touch = e.touches[0];
+            const touchX = touch.clientX - canvas.offsetLeft;
+            const touchY = touch.clientY - canvas.offsetTop;
+
+            player.x = Math.max(0, Math.min(800, touchX));
+            player.y = Math.max(0, Math.min(600, touchY));
+            if (player.drawing) {
+                player.path.push({ x: player.x, y: player.y });
+            }
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (touchActive) {
+                endDrawing();
+                touchActive = false;
+            }
+        });
 
         // Funzione per disegnare il bordo
         function drawBorder() {
@@ -65,22 +102,22 @@
             ctx.fillRect(qix.x - 10, qix.y - 10, 20, 20);
         }
 
-        // Movimento del giocatore
+        // Movimento del giocatore (tastiera)
         function movePlayer() {
             let moved = false;
             if (keys['ArrowUp']) { player.y -= player.speed; moved = true; }
             if (keys['ArrowDown']) { player.y += player.speed; moved = true; }
             if (keys['ArrowLeft']) { player.x -= player.speed; moved = true; }
             if (keys['ArrowRight']) { player.x += player.speed; moved = true; }
-            if (keys[' ']) { player.drawing = true; } // Spazio per iniziare a disegnare
-            if (!keys[' '] && player.drawing) { endDrawing(); }
+            if (keys[' ']) { player.drawing = true; }
+            if (!keys[' '] && player.drawing && !touchActive) { endDrawing(); }
 
             // Limiti del canvas
             player.x = Math.max(0, Math.min(800, player.x));
             player.y = Math.max(0, Math.min(600, player.y));
 
             // Aggiorna il percorso se sta disegnando
-            if (player.drawing && moved) {
+            if (player.drawing && moved && !touchActive) {
                 player.path.push({ x: player.x, y: player.y });
             }
         }
@@ -97,16 +134,15 @@
         function endDrawing() {
             player.drawing = false;
             if (player.path.length > 0) {
-                // Aggiungi il percorso al bordo
                 border.push(...player.path);
                 fillArea();
                 player.path = [];
             }
         }
 
-        // Riempie l'area reclamata (algoritmo semplice di flood fill)
+        // Riempie l'area reclamata
         function fillArea() {
-            const stack = [{ x: 10, y: 10 }]; // Punto iniziale interno
+            const stack = [{ x: 10, y: 10 }];
             while (stack.length > 0) {
                 const { x, y } = stack.pop();
                 const key = `${x},${y}`;
@@ -123,7 +159,7 @@
             }
         }
 
-        // Verifica se un punto è dentro il bordo (semplificato)
+        // Verifica se un punto è dentro il bordo
         function isInsideBorder(x, y) {
             let inside = false;
             for (let i = 0, j = border.length - 1; i < border.length; j = i++) {
