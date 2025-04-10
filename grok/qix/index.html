@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QIX Remake</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Variabili di gioco
+        const player = { x: 0, y: 0, speed: 4, drawing: false, path: [] };
+        const qix = { x: 400, y: 300, dx: 2, dy: 2 };
+        const gridSize = 10; // Dimensione griglia per semplificare il calcolo delle aree
+        let claimedArea = new Set(); // Aree reclamate
+        const border = [
+            { x: 0, y: 0 }, { x: 800, y: 0 }, { x: 800, y: 600 }, { x: 0, y: 600 }
+        ];
+
+        // Controlli
+        const keys = {};
+        document.addEventListener('keydown', (e) => keys[e.key] = true);
+        document.addEventListener('keyup', (e) => keys[e.key] = false);
+
+        // Funzione per disegnare il bordo
+        function drawBorder() {
+            ctx.beginPath();
+            ctx.moveTo(border[0].x, border[0].y);
+            for (let i = 1; i < border.length; i++) {
+                ctx.lineTo(border[i].x, border[i].y);
+            }
+            ctx.closePath();
+            ctx.strokeStyle = 'blue';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        // Disegna il giocatore
+        function drawPlayer() {
+            ctx.fillStyle = 'green';
+            ctx.fillRect(player.x - 5, player.y - 5, 10, 10);
+            if (player.drawing && player.path.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(player.path[0].x, player.path[0].y);
+                for (let i = 1; i < player.path.length; i++) {
+                    ctx.lineTo(player.path[i].x, player.path[i].y);
+                }
+                ctx.lineTo(player.x, player.y);
+                ctx.strokeStyle = 'red';
+                ctx.stroke();
+            }
+        }
+
+        // Disegna il Qix
+        function drawQix() {
+            ctx.fillStyle = 'orange';
+            ctx.fillRect(qix.x - 10, qix.y - 10, 20, 20);
+        }
+
+        // Movimento del giocatore
+        function movePlayer() {
+            let moved = false;
+            if (keys['ArrowUp']) { player.y -= player.speed; moved = true; }
+            if (keys['ArrowDown']) { player.y += player.speed; moved = true; }
+            if (keys['ArrowLeft']) { player.x -= player.speed; moved = true; }
+            if (keys['ArrowRight']) { player.x += player.speed; moved = true; }
+            if (keys[' ']) { player.drawing = true; } // Spazio per iniziare a disegnare
+            if (!keys[' '] && player.drawing) { endDrawing(); }
+
+            // Limiti del canvas
+            player.x = Math.max(0, Math.min(800, player.x));
+            player.y = Math.max(0, Math.min(600, player.y));
+
+            // Aggiorna il percorso se sta disegnando
+            if (player.drawing && moved) {
+                player.path.push({ x: player.x, y: player.y });
+            }
+        }
+
+        // Movimento del Qix
+        function moveQix() {
+            qix.x += qix.dx;
+            qix.y += qix.dy;
+            if (qix.x < 20 || qix.x > 780) qix.dx = -qix.dx;
+            if (qix.y < 20 || qix.y > 580) qix.dy = -qix.dy;
+        }
+
+        // Fine del disegno e calcolo area
+        function endDrawing() {
+            player.drawing = false;
+            if (player.path.length > 0) {
+                // Aggiungi il percorso al bordo
+                border.push(...player.path);
+                fillArea();
+                player.path = [];
+            }
+        }
+
+        // Riempie l'area reclamata (algoritmo semplice di flood fill)
+        function fillArea() {
+            const stack = [{ x: 10, y: 10 }]; // Punto iniziale interno
+            while (stack.length > 0) {
+                const { x, y } = stack.pop();
+                const key = `${x},${y}`;
+                if (claimedArea.has(key) || isInsideBorder(x, y)) continue;
+
+                claimedArea.add(key);
+                ctx.fillStyle = 'rgba(0, 0, 255, 0.3)';
+                ctx.fillRect(x - gridSize / 2, y - gridSize / 2, gridSize, gridSize);
+
+                stack.push({ x: x + gridSize, y });
+                stack.push({ x: x - gridSize, y });
+                stack.push({ x, y: y + gridSize });
+                stack.push({ x, y: y - gridSize });
+            }
+        }
+
+        // Verifica se un punto è dentro il bordo (semplificato)
+        function isInsideBorder(x, y) {
+            let inside = false;
+            for (let i = 0, j = border.length - 1; i < border.length; j = i++) {
+                const xi = border[i].x, yi = border[i].y;
+                const xj = border[j].x, yj = border[j].y;
+                const intersect = ((yi > y) !== (yj > y)) && 
+                    (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        // Verifica collisioni con il Qix
+        function checkCollision() {
+            if (player.drawing) {
+                const dist = Math.sqrt((player.x - qix.x) ** 2 + (player.y - qix.y) ** 2);
+                if (dist < 20) {
+                    alert('Game Over! Collisione con il Qix.');
+                    resetGame();
+                }
+            }
+        }
+
+        // Resetta il gioco
+        function resetGame() {
+            player.x = 0;
+            player.y = 0;
+            player.drawing = false;
+            player.path = [];
+            claimedArea.clear();
+            qix.x = 400;
+            qix.y = 300;
+        }
+
+        // Loop principale
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBorder();
+            drawPlayer();
+            drawQix();
+            movePlayer();
+            moveQix();
+            checkCollision();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Avvia il gioco
+        player.x = border[0].x;
+        player.y = border[0].y;
+        gameLoop();
+    </script>
+</body>
+</html>
